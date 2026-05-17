@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { tablesFor, type MockTable } from '../mock/data'
 import TableCard from '../components/TableCard'
+import { useShellContext } from '../shell/context'
 
-interface Props {
-  activeConnID: number
-}
-
-export default function SchemaPage({ activeConnID }: Props) {
+export default function SchemaPage() {
+  const { activeConnID, activeConn } = useShellContext()
+  // Plan 7 replaces this with pg_catalog-driven introspection. Until then,
+  // every connection sees the sample schema so the page stays meaningful.
   const tables = tablesFor(activeConnID)
   const [focused, setFocused] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
@@ -45,6 +45,8 @@ export default function SchemaPage({ activeConnID }: Props) {
           <div>
             <h1 className="text-[22px] font-semibold text-ink-50 tracking-tight">Schema</h1>
             <p className="text-ink-300 text-[13px] mt-0.5">
+              {activeConn && <span className="font-mono">{activeConn.alias}</span>}
+              {activeConn && <span className="text-ink-500"> · </span>}
               {tables.length} tables &nbsp;·&nbsp; {totalCols} columns &nbsp;·&nbsp;{' '}
               {totalRows.toLocaleString()} rows total
             </p>

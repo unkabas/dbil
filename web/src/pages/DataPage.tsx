@@ -3,12 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { findTable, mockRowsFor, tablesFor } from '../mock/data'
 import StatusPill from '../components/StatusPill'
 import Icon from '../components/Icon'
+import { useShellContext } from '../shell/context'
 
-interface Props {
-  activeConnID: number
-}
-
-export default function DataPage({ activeConnID }: Props) {
+export default function DataPage() {
+  const { activeConnID } = useShellContext()
   const { schema, name } = useParams<{ schema: string; name: string }>()
   const navigate = useNavigate()
   const tables = tablesFor(activeConnID)
