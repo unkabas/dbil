@@ -12,6 +12,9 @@ func TestPolicyFor_Local(t *testing.T) {
 	if p.Timeout != 5*time.Minute {
 		t.Fatalf("local timeout: %v", p.Timeout)
 	}
+	if p.PollInterval != 60*time.Second {
+		t.Fatalf("local poll interval: %v", p.PollInterval)
+	}
 	if !p.DMLAllowed || !p.DDLAllowed || !p.DangerousAllowed {
 		t.Fatal("local must allow everything")
 	}
@@ -44,6 +47,9 @@ func TestPolicyFor_Production(t *testing.T) {
 	p := PolicyFor(store.TagProduction)
 	if p.Timeout != 10*time.Second {
 		t.Fatalf("production timeout: %v", p.Timeout)
+	}
+	if p.PollInterval != 5*time.Second {
+		t.Fatalf("production poll interval: %v", p.PollInterval)
 	}
 	if !p.DMLAllowed {
 		t.Fatal("production should allow DML with confirmation")

@@ -9,10 +9,14 @@ import (
 	"github.com/unkabas/dbil/internal/store"
 )
 
-// Policy is the per-tag safety configuration applied by Manager.Execute.
+// Policy is the per-tag safety configuration applied by Manager.Execute
+// and the observability collector tick cadence.
 type Policy struct {
 	// Timeout caps a single statement's execution time via context deadline.
 	Timeout time.Duration
+
+	// PollInterval drives the observability collector tick on this tag.
+	PollInterval time.Duration
 
 	// DMLAllowed false blocks INSERT/UPDATE/DELETE/MERGE/TRUNCATE/COPY/CALL.
 	DMLAllowed bool
@@ -38,6 +42,7 @@ func PolicyFor(tag string) Policy {
 	case store.TagLocal:
 		return Policy{
 			Timeout:          5 * time.Minute,
+			PollInterval:     60 * time.Second,
 			DMLAllowed:       true,
 			DDLAllowed:       true,
 			DangerousAllowed: true,
@@ -45,6 +50,7 @@ func PolicyFor(tag string) Policy {
 	case store.TagDev:
 		return Policy{
 			Timeout:          30 * time.Second,
+			PollInterval:     30 * time.Second,
 			DMLAllowed:       true,
 			DDLAllowed:       true,
 			DangerousAllowed: true,
@@ -52,6 +58,7 @@ func PolicyFor(tag string) Policy {
 	case store.TagStaging:
 		return Policy{
 			Timeout:                  30 * time.Second,
+			PollInterval:             10 * time.Second,
 			DMLAllowed:               true,
 			DMLRequiresConfirm:       true,
 			DDLAllowed:               true,
@@ -62,6 +69,7 @@ func PolicyFor(tag string) Policy {
 	case store.TagProduction:
 		return Policy{
 			Timeout:            10 * time.Second,
+			PollInterval:       5 * time.Second,
 			DMLAllowed:         true,
 			DMLRequiresConfirm: true,
 			// DDL blocked outright until "second approval" workflows ship.
@@ -70,5 +78,5 @@ func PolicyFor(tag string) Policy {
 			DangerousAllowed: false,
 		}
 	}
-	return Policy{Timeout: 10 * time.Second}
+	return Policy{Timeout: 10 * time.Second, PollInterval: 60 * time.Second}
 }
