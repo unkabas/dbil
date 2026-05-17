@@ -59,6 +59,9 @@ func Mount(d Deps) chi.Router {
 		p.Get("/api/connections/{id}/observ/overview", OverviewHandler(d))
 		p.Get("/api/connections/{id}/observ/slow", SlowQueriesHandler(d))
 		p.Get("/api/connections/{id}/observ/locks", LocksHandler(d))
+
+		p.Get("/api/connections/{id}/schema", SchemaHandler(d))
+		p.Get("/api/connections/{id}/table/{schema}/{name}/rows", RowsHandler(d))
 	})
 
 	// --- Static SPA (embedded React bundle) ---
