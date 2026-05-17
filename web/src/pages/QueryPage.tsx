@@ -3,17 +3,23 @@ import CodeMirror from '@uiw/react-codemirror'
 import { sql, PostgreSQL } from '@codemirror/lang-sql'
 import { darcula } from '@uiw/codemirror-theme-darcula'
 import { EditorView } from '@codemirror/view'
-import { mockResultFor, sampleSQL, type MockResult } from '../mock/data'
-import Icon from '../components/Icon'
 import { useShellContext } from '../shell/context'
+import { useExecuteQuery, type QueryResult } from '../api/connections'
+import { ApiError } from '../api/client'
+import { sampleSQL } from '../mock/data'
+import Icon from '../components/Icon'
+import StatusPill from '../components/StatusPill'
 
 export default function QueryPage() {
   const { activeConn } = useShellContext()
   const [text, setText] = useState(sampleSQL)
-  const [result, setResult] = useState<MockResult | null>(null)
+  const [result, setResult] = useState<QueryResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [running, setRunning] = useState(false)
   const [confirm, setConfirm] = useState(false)
+  const [passphrase, setPassphrase] = useState('')
+  const [needsPassphrase, setNeedsPassphrase] = useState(false)
+
+  const execute = useExecuteQuery()
 
   if (!activeConn) {
     return (
@@ -22,26 +28,49 @@ export default function QueryPage() {
       </div>
     )
   }
+
   const conn = activeConn
   const needsConfirm = conn.tag === 'production' || conn.tag === 'staging'
+  const passphraseRequired = conn.requires_passphrase || needsPassphrase
 
-  const run = () => {
-    if (running) return
-    if (needsConfirm && !confirm) {
-      setResult(null)
-      setError(
-        conn.tag === 'production'
-          ? 'production: confirmation required (tick the box) — DDL is blocked outright by policy'
-          : 'staging: confirmation required (tick the box)',
-      )
-      return
-    }
-    setRunning(true)
+  const run = async () => {
+    if (execute.isPending) return
     setError(null)
-    setTimeout(() => {
-      setResult(mockResultFor(text))
-      setRunning(false)
-    }, 250 + Math.random() * 400)
+    try {
+      const r = await execute.mutateAsync({
+        id: conn.id,
+        sql: text,
+        confirm,
+        passphrase: passphrase || undefined,
+      })
+      setResult(r)
+      setNeedsPassphrase(false)
+    } catch (err) {
+      setResult(null)
+      if (err instanceof ApiError) {
+        if (err.status === 428) {
+          const msg = (err.body.error || '').toLowerCase()
+          if (msg.includes('passphrase')) {
+            setNeedsPassphrase(true)
+            setError('Passphrase required for this connection')
+          } else {
+            setError(err.body.reason || 'Confirmation required (tick the checkbox)')
+          }
+        } else if (err.status === 401) {
+          setError('Invalid passphrase')
+        } else if (err.status === 403) {
+          setError(`Blocked by policy: ${err.body.reason || 'see the server reason'}`)
+        } else if (err.status === 504) {
+          setError('Statement timeout')
+        } else if (err.status === 502) {
+          setError(err.body.error || 'Driver error')
+        } else {
+          setError(err.body.error || `Query failed (${err.status})`)
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Query failed')
+      }
+    }
   }
 
   return (
@@ -50,14 +79,26 @@ export default function QueryPage() {
       onKeyDown={(e) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
           e.preventDefault()
-          run()
+          void run()
         }
       }}
     >
       <div className="px-6 pt-6 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-[22px] font-semibold text-ink-50 tracking-tight">Query</h1>
+        <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
           <div className="flex items-center gap-3">
+            <h1 className="text-[22px] font-semibold text-ink-50 tracking-tight">Query</h1>
+            <span className="text-ink-400 text-[12.5px] font-mono">{conn.alias}</span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {passphraseRequired && (
+              <input
+                type="password"
+                value={passphrase}
+                onChange={(e) => setPassphrase(e.target.value)}
+                placeholder="connection passphrase"
+                className="w-56 h-9 px-3 rounded-md bg-ink-800 border border-ink-700 focus:border-violet focus:outline-none text-[12.5px] text-ink-100 placeholder:text-ink-500"
+              />
+            )}
             {needsConfirm && (
               <label className="flex items-center gap-2 text-ink-300 text-[12px] cursor-pointer">
                 <input
@@ -67,16 +108,17 @@ export default function QueryPage() {
                   className="accent-violet"
                 />
                 <span>
-                  I understand this hits <span className="text-ink-100 font-medium">{conn.tag}</span>
+                  I understand this hits{' '}
+                  <span className="text-ink-100 font-medium">{conn.tag}</span>
                 </span>
               </label>
             )}
             <button
-              onClick={run}
-              disabled={running}
+              onClick={() => void run()}
+              disabled={execute.isPending}
               className="h-9 px-4 rounded-md bg-violet text-white font-medium text-[13px] flex items-center gap-2 hover:bg-violet-deep transition-colors shadow-glow disabled:opacity-50 disabled:shadow-none"
             >
-              {running ? (
+              {execute.isPending ? (
                 <>
                   <Spinner />
                   <span>Running…</span>
@@ -119,23 +161,31 @@ export default function QueryPage() {
             {result && (
               <>
                 <Dot />
-                <span className="text-ink-300">{result.commandTag}</span>
+                <span className="text-ink-300">{result.command_tag}</span>
                 <Dot />
-                <span className="text-ink-300">{result.durationMs} ms</span>
+                <span className="text-ink-300">{result.duration_ms} ms</span>
                 {result.rows.length > 0 && (
                   <>
                     <Dot />
                     <span className="text-ink-300">{result.rows.length} rows</span>
                   </>
                 )}
+                {result.truncated && (
+                  <>
+                    <Dot />
+                    <StatusPill tone="warning" size="xs">
+                      truncated
+                    </StatusPill>
+                  </>
+                )}
               </>
             )}
           </div>
           <div className="flex-1 overflow-auto">
-            {running && <CenterMessage>Executing…</CenterMessage>}
-            {!running && error && <ErrorBanner text={error} />}
-            {!running && !error && result && <ResultGrid result={result} />}
-            {!running && !error && !result && (
+            {execute.isPending && <CenterMessage>Executing…</CenterMessage>}
+            {!execute.isPending && error && <ErrorBanner text={error} />}
+            {!execute.isPending && !error && result && <ResultGrid result={result} />}
+            {!execute.isPending && !error && !result && (
               <CenterMessage>Press Execute (⌘⏎) to run the query.</CenterMessage>
             )}
           </div>
@@ -145,11 +195,12 @@ export default function QueryPage() {
   )
 }
 
-function ResultGrid({ result }: { result: MockResult }) {
+function ResultGrid({ result }: { result: QueryResult }) {
   if (result.rows.length === 0) {
     return (
       <div className="p-6 text-ink-300 text-[13px] font-mono">
-        {result.commandTag} — {result.rowsAffected} {result.rowsAffected === 1 ? 'row' : 'rows'} affected
+        {result.command_tag} — {result.rows_affected}{' '}
+        {result.rows_affected === 1 ? 'row' : 'rows'} affected
       </div>
     )
   }
@@ -157,18 +208,11 @@ function ResultGrid({ result }: { result: MockResult }) {
     <table className="font-mono text-[12.5px] border-collapse w-full">
       <thead className="sticky top-0 z-10 bg-ink-900">
         <tr>
-          <th className="w-12 px-3 py-2 text-right text-ink-400 border-b border-ink-700 font-normal">
-            #
-          </th>
+          <th className="w-12 px-3 py-2 text-right text-ink-400 border-b border-ink-700 font-normal">#</th>
           {result.columns.map((c, i) => (
-            <th
-              key={i}
-              className="px-3 py-2 text-left border-b border-ink-700 font-medium text-ink-100"
-            >
+            <th key={i} className="px-3 py-2 text-left border-b border-ink-700 font-medium text-ink-100">
               <div>{c.name}</div>
-              <div className="text-[10.5px] text-accent-lilac font-normal italic">
-                {c.typeName}
-              </div>
+              <div className="text-[10.5px] text-accent-lilac font-normal italic">{c.type_name}</div>
             </th>
           ))}
         </tr>
@@ -176,9 +220,7 @@ function ResultGrid({ result }: { result: MockResult }) {
       <tbody>
         {result.rows.map((row, i) => (
           <tr key={i} className="hover:bg-violet/5 transition-colors">
-            <td className="px-3 py-1.5 text-ink-400 text-right border-b border-ink-800">
-              {i + 1}
-            </td>
+            <td className="px-3 py-1.5 text-ink-400 text-right border-b border-ink-800">{i + 1}</td>
             {row.map((cell, ci) => (
               <td
                 key={ci}
@@ -204,7 +246,7 @@ function renderCell(v: unknown) {
 
 function ErrorBanner({ text }: { text: string }) {
   return (
-    <div className="m-4 p-3 rounded-lg bg-accent-coral/10 border border-accent-coral/40 text-accent-coral text-[12.5px] font-mono">
+    <div className="m-4 p-3 rounded-lg bg-accent-coral/10 border border-accent-coral/40 text-accent-coral text-[12.5px] font-mono whitespace-pre-wrap">
       {text}
     </div>
   )
