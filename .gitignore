@@ -1,0 +1,24 @@
+# Build artifacts
+/bin/
+/dist/
+*.test
+*.exe
+*.out
+
+# Coverage
+/coverage.out
+/coverage.html
+
+# IDE
+.idea/
+.vscode/
+
+# Local DBil state — never commit master keys or stored credentials
+/dbil-data/
+master.key
+initial-credentials.txt
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp

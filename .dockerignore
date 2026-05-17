@@ -1,0 +1,14 @@
+.git
+.github
+docs
+examples
+tests
+*.md
+bin
+dist
+dbil-data
+.idea
+.vscode
+.DS_Store
+coverage.out
+coverage.html
