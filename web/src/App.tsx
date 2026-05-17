@@ -4,6 +4,7 @@ import TopNav from './components/TopNav'
 import SchemaPage from './pages/SchemaPage'
 import QueryPage from './pages/QueryPage'
 import ConnectionsPage from './pages/ConnectionsPage'
+import DataPage from './pages/DataPage'
 import { mockConnections } from './mock/data'
 
 export default function App() {
@@ -17,6 +18,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<SchemaPage activeConnID={activeConnID} />} />
             <Route path="/query" element={<QueryPage activeConnID={activeConnID} />} />
+            <Route path="/data" element={<DataPage activeConnID={activeConnID} />} />
+            <Route path="/data/:schema/:name" element={<DataPage activeConnID={activeConnID} />} />
             <Route path="/connections" element={<ConnectionsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -219,6 +219,58 @@ export function tablesFor(connID: number): MockTable[] {
   return tables[connID] ?? []
 }
 
+export function findTable(connID: number, schema: string, name: string): MockTable | undefined {
+  return tablesFor(connID).find((t) => t.schema === schema && t.name === name)
+}
+
+// Mock rows generator — produces deterministic sample data for any table by
+// hashing column names + types. Good enough to demo the data viewer without
+// hand-curating every table.
+export function mockRowsFor(table: MockTable, count = 24): (string | number | boolean | null)[][] {
+  const rows: (string | number | boolean | null)[][] = []
+  for (let i = 0; i < count; i++) {
+    rows.push(
+      table.columns.map((c) => {
+        if (c.nullable && i % 7 === 3) return null
+        return fakeValue(c, i, table.name)
+      }),
+    )
+  }
+  return rows
+}
+
+function fakeValue(c: MockColumn, i: number, tableName: string): string | number | boolean | null {
+  const t = c.type.toLowerCase()
+  if (c.pk) return (1000 + i).toString().padStart(0, '0').replace(/^/, '') ? 1000 + i : 1
+  if (/int|bigint|numeric|float|decimal/.test(t)) {
+    if (c.name.includes('cents')) return [199, 499, 999, 1499, 2499, 4999][i % 6]
+    if (c.name.includes('quantity')) return (i % 9) + 1
+    if (c.name.endsWith('_id')) return 1000 + (i * 7) % 200
+    return i + 1
+  }
+  if (/bool/.test(t)) return i % 2 === 0
+  if (/time|date/.test(t)) {
+    const base = new Date(Date.UTC(2026, 4, 1 + (i % 17), 8 + (i % 12), (i * 13) % 60))
+    return base.toISOString().replace('T', ' ').slice(0, 19) + '+00'
+  }
+  if (/inet/.test(t)) return ['10.0.0.5', '172.16.4.21', '192.168.1.42', '203.0.113.7'][i % 4]
+  if (/uuid/.test(t)) return `00000000-0000-4000-a000-${(1000 + i).toString().padStart(12, '0')}`
+  if (c.name === 'email') {
+    const names = ['alice', 'bob', 'carol', 'dan', 'evan', 'frida', 'gabe', 'hina', 'ivan', 'jess', 'kira', 'lucas']
+    return `${names[i % names.length]}${i > 11 ? i : ''}@example.com`
+  }
+  if (c.name === 'name') {
+    return ['Alice Adams', 'Bob Brown', 'Carol Chen', 'Dan Diaz', 'Evan E.', 'Frida Fischer', 'Gabe Green', 'Hina Hara', 'Ivan I.', 'Jess Jang', 'Kira K.', 'Lucas Lopez'][i % 12]
+  }
+  if (c.name === 'sku') return `${tableName.slice(0, 3).toUpperCase()}-${(2000 + i).toString()}`
+  if (c.name === 'status') {
+    return ['placed', 'paid', 'shipped', 'delivered', 'returned'][i % 5]
+  }
+  if (c.name === 'action') return ['auth.login', 'query.execute', 'connection.create', 'auth.logout'][i % 4]
+  if (c.name === 'resource') return `conn:${(i % 3) + 1}`
+  return `${c.name}-${i + 1}`
+}
+
 export const sampleSQL = `-- Recently active users with order totals
 SELECT
     u.id,
