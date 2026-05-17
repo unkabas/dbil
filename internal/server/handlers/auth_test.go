@@ -38,7 +38,7 @@ func setup(t *testing.T) (auth.Deps, http.Handler, store.User) {
 	}
 	ad := auth.Deps{Users: users, Sessions: sessions, Audit: auditRepo}
 	conns := store.NewConnectionsRepo(db, mk)
-	mgr := postgres.NewManager(postgres.NewPGX(), conns)
+	mgr := postgres.NewManager(postgres.NewPGX(), conns, auditRepo)
 	return ad, Mount(Deps{Auth: ad, Conns: conns, Manager: mgr, Version: "test"}), u
 }
 

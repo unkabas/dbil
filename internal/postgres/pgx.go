@@ -5,8 +5,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// defaultRowCap caps Result.Rows. When hit, Result.Truncated is set.
+const defaultRowCap = 10000
+
+// typeMap is a default pgtype Map used to label columns. Reserving a
+// per-pool map (via Conn().TypeMap()) would let users register custom
+// types, but Plan 4 doesn't need that; built-in types are enough.
+var typeMap = pgtype.NewMap()
 
 // NewPGX returns the production Driver backed by pgxpool.
 func NewPGX() Driver { return &pgxDriver{} }
@@ -20,6 +29,58 @@ func (p *pgxPool) Ping(ctx context.Context) error { return p.p.Ping(ctx) }
 
 // Close releases the underlying pgx pool.
 func (p *pgxPool) Close() { p.p.Close() }
+
+// Execute runs sql against the pool and collects up to defaultRowCap rows
+// into a Result. The context is the caller's; statement timeout enforcement
+// lives in Manager.Execute which wraps this call with context.WithTimeout.
+func (p *pgxPool) Execute(ctx context.Context, sql string) (*Result, error) {
+	start := time.Now()
+	rows, err := p.p.Query(ctx, sql)
+	if err != nil {
+		return nil, fmt.Errorf("pgx execute: %w", err)
+	}
+	defer rows.Close()
+
+	fds := rows.FieldDescriptions()
+	cols := make([]ColumnDef, len(fds))
+	for i, fd := range fds {
+		name := string(fd.Name)
+		typeName := ""
+		if t, ok := typeMap.TypeForOID(fd.DataTypeOID); ok {
+			typeName = t.Name
+		}
+		cols[i] = ColumnDef{Name: name, TypeName: typeName}
+	}
+
+	var (
+		resultRows [][]any
+		truncated  bool
+	)
+	for rows.Next() {
+		if len(resultRows) >= defaultRowCap {
+			truncated = true
+			break
+		}
+		vals, err := rows.Values()
+		if err != nil {
+			return nil, fmt.Errorf("pgx execute scan: %w", err)
+		}
+		resultRows = append(resultRows, vals)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("pgx execute iterate: %w", err)
+	}
+
+	tag := rows.CommandTag()
+	return &Result{
+		Columns:      cols,
+		Rows:         resultRows,
+		RowsAffected: tag.RowsAffected(),
+		CommandTag:   tag.String(),
+		Duration:     time.Since(start),
+		Truncated:    truncated,
+	}, nil
+}
 
 // Open builds a libpq-style DSN, opens a pgxpool.Pool with DBil's default
 // limits (MaxConns=4, MinConns=0, MaxConnIdleTime=5m), and returns it.

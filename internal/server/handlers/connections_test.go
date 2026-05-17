@@ -17,11 +17,19 @@ import (
 	"github.com/unkabas/dbil/internal/store"
 )
 
-// fakePool is the smallest Pool implementation for handler tests.
+// fakePool is the smallest Pool implementation for handler tests. Returns
+// a canned single-row "SELECT 1" Result from Execute.
 type fakePool struct{}
 
 func (fakePool) Ping(context.Context) error { return nil }
 func (fakePool) Close()                     {}
+func (fakePool) Execute(context.Context, string) (*postgres.Result, error) {
+	return &postgres.Result{
+		Columns:    []postgres.ColumnDef{{Name: "n", TypeName: "int4"}},
+		Rows:       [][]any{{int64(1)}},
+		CommandTag: "SELECT 1",
+	}, nil
+}
 
 // fakeDriver is a Driver that does not talk to a real Postgres; it returns
 // canned Probes / errors. Lives in the handler test file so it can't be
@@ -69,7 +77,7 @@ func setupConns(t *testing.T) (Deps, http.Handler, string) {
 	ad := auth.Deps{Users: users, Sessions: sessions, Audit: auditRepo}
 	conns := store.NewConnectionsRepo(db, mk)
 	drv := &fakeDriver{probe: postgres.Probe{Version: "PostgreSQL 16.fake", HasPgStatStatements: true}}
-	mgr := postgres.NewManager(drv, conns)
+	mgr := postgres.NewManager(drv, conns, auditRepo)
 	d := Deps{Auth: ad, Conns: conns, Manager: mgr, Version: "test"}
 
 	res, err := auth.Login(context.Background(), ad, "admin@local", adminPassword, "ua", "ip")
