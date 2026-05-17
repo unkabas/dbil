@@ -26,6 +26,17 @@ const passwordHashLen = 32
 // taken (UNIQUE constraint).
 var ErrUserExists = errors.New("user already exists")
 
+// ErrUserNotFound is returned when an email lookup misses.
+var ErrUserNotFound = errors.New("user not found")
+
+// UserAuth bundles a user row with its password material. Used only inside
+// auth/store; never serialise this type in API responses.
+type UserAuth struct {
+	User
+	PasswordHash string
+	PasswordSalt []byte
+}
+
 // User is the row from the users table without the password material.
 type User struct {
 	ID         int64
@@ -104,4 +115,32 @@ func (r *UsersRepo) AdminExists(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("users: count admins: %w", err)
 	}
 	return n > 0, nil
+}
+
+// GetUserAuthByEmail returns the user along with the credentials needed by
+// the auth package to verify a password. Returns ErrUserNotFound on miss.
+func (r *UsersRepo) GetUserAuthByEmail(ctx context.Context, email string) (UserAuth, error) {
+	var (
+		ua         UserAuth
+		mustRotate int
+		createdNS  int64
+		updatedNS  int64
+	)
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT id, email, password_hash, password_salt, role, must_rotate, created_at, updated_at
+		FROM users WHERE email = ?`, email,
+	).Scan(
+		&ua.User.ID, &ua.User.Email, &ua.PasswordHash, &ua.PasswordSalt,
+		&ua.User.Role, &mustRotate, &createdNS, &updatedNS,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return UserAuth{}, ErrUserNotFound
+	}
+	if err != nil {
+		return UserAuth{}, fmt.Errorf("users: get auth by email: %w", err)
+	}
+	ua.User.MustRotate = mustRotate != 0
+	ua.User.CreatedAt = time.Unix(0, createdNS)
+	ua.User.UpdatedAt = time.Unix(0, updatedNS)
+	return ua, nil
 }
