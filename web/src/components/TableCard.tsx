@@ -1,4 +1,6 @@
+import { useNavigate } from 'react-router-dom'
 import type { MockTable, MockColumn } from '../mock/data'
+import StatusPill from './StatusPill'
 
 interface Props {
   table: MockTable
@@ -8,25 +10,29 @@ interface Props {
 }
 
 export default function TableCard({ table, highlightedFkTo, onClick, isFocused }: Props) {
-  const showRelHint = highlightedFkTo && highlightedFkTo === `${table.schema}.${table.name}`
+  const navigate = useNavigate()
+  const fqdn = `${table.schema}.${table.name}`
+  const showRelHint = !!highlightedFkTo && highlightedFkTo === fqdn
+  const pkCount = table.columns.filter((c) => c.pk).length
+  const fkCount = table.columns.filter((c) => c.fk).length
 
   return (
     <div
       onClick={onClick}
-      className={`relative bg-ink-800/70 backdrop-blur-sm border rounded-xl shadow-card overflow-hidden cursor-pointer transition-all duration-150 ${
+      className={`group relative bg-ink-800/60 backdrop-blur-sm border rounded-2xl shadow-card overflow-hidden cursor-pointer transition-all duration-150 ${
         isFocused
           ? 'border-violet shadow-glow'
           : showRelHint
             ? 'border-accent-lilac/60'
-            : 'border-ink-700 hover:border-ink-600'
+            : 'border-ink-700 hover:border-violet/40 hover:shadow-glow'
       }`}
     >
       {/* Header strip */}
-      <div className="bg-header-grad px-4 py-3 border-b border-ink-700 flex items-center gap-2">
+      <div className="bg-card-grad px-4 py-3 border-b border-ink-700 flex items-center gap-3">
         <TableGlyph />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="text-ink-100 font-semibold font-mono text-[13.5px] truncate">
+            <span className="text-ink-50 font-semibold font-mono text-[14px] truncate">
               {table.name}
             </span>
             <span className="text-ink-400 text-[11px] font-mono">{table.schema}</span>
@@ -44,6 +50,26 @@ export default function TableCard({ table, highlightedFkTo, onClick, isFocused }
           <ColumnRow key={c.name} col={c} />
         ))}
       </ul>
+
+      {/* Footer */}
+      <div className="px-4 py-2 border-t border-ink-700 flex items-center gap-2 text-[11px]">
+        {pkCount > 0 && (
+          <StatusPill tone="warning" size="xs">{pkCount === 1 ? 'PK' : `${pkCount} PK`}</StatusPill>
+        )}
+        {fkCount > 0 && (
+          <StatusPill tone="info" size="xs">{fkCount} FK</StatusPill>
+        )}
+        <StatusPill tone="success" size="xs">in sync</StatusPill>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            navigate(`/data/${table.schema}/${table.name}`)
+          }}
+          className="ml-auto text-[11px] font-medium text-violet hover:text-violet-bright opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          Browse data →
+        </button>
+      </div>
     </div>
   )
 }
@@ -106,8 +132,8 @@ function KeyDot({ color, filled, title }: { color: string; filled?: boolean; tit
 
 function TableGlyph() {
   return (
-    <span className="w-7 h-7 rounded-lg bg-violet/15 ring-1 ring-violet/30 flex items-center justify-center">
-      <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-violet" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <span className="w-9 h-9 rounded-xl bg-violet/15 ring-1 ring-violet/30 flex items-center justify-center">
+      <svg viewBox="0 0 16 16" className="w-4 h-4 text-violet" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="2.5" y="3" width="11" height="10" rx="1.2" />
         <path d="M2.5 6.5h11M2.5 10h11M5.5 6.5V13" />
       </svg>
@@ -117,12 +143,12 @@ function TableGlyph() {
 
 function RowCount({ n }: { n: number }) {
   return (
-    <span
-      className="font-mono text-[11px] text-ink-300 bg-ink-900/70 ring-1 ring-ink-700 rounded-md px-2 py-0.5"
-      title={`${n.toLocaleString()} rows`}
-    >
-      {formatRowCount(n)}
-    </span>
+    <div className="text-right">
+      <div className="font-mono text-[18px] font-semibold text-ink-50 leading-none">
+        {formatRowCount(n)}
+      </div>
+      <div className="text-[10px] text-ink-400 uppercase tracking-wider mt-0.5">rows</div>
+    </div>
   )
 }
 
