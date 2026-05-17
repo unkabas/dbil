@@ -1,77 +1,300 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* dbil — design tokens (premium dark, Linear/Vercel feel) */
 :root {
+  /* Surfaces */
+  --bg-0: #07080A;
+  --bg-1: #0B0D11;
+  --bg-2: #10131A;
+  --bg-3: #161A22;
+  --bg-4: #1D222B;
+
+  /* Borders */
+  --line-1: #1A1E26;
+  --line-2: #232833;
+  --line-3: #2E3441;
+
+  /* Text */
+  --fg-1: #ECEEF3;
+  --fg-2: #B8BDC9;
+  --fg-3: #7C8597;
+  --fg-4: #545B6B;
+  --fg-5: #3A4050;
+
+  /* Accent (electric violet) */
+  --accent: #8B7CFF;
+  --accent-deep: #6B53FF;
+  --accent-soft: #B5ABFF;
+  --accent-glow: rgba(139, 124, 255, 0.32);
+  --accent-mute: rgba(139, 124, 255, 0.12);
+
+  /* Semantic */
+  --ok: #34D399;
+  --ok-soft: rgba(52, 211, 153, 0.14);
+  --warn: #F5A524;
+  --warn-soft: rgba(245, 165, 36, 0.14);
+  --danger: #FF6B7A;
+  --danger-soft: rgba(255, 107, 122, 0.14);
+  --prod: #FF5577;
+  --prod-soft: rgba(255, 85, 119, 0.14);
+
+  /* Chart / type colours */
+  --c-cyan: #4ED6FF;
+  --c-mint: #34D399;
+  --c-amber: #F5A524;
+  --c-rose: #FF6B7A;
+  --c-violet: var(--accent);
+
+  /* Type */
+  --font-sans: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Density (could be swapped at runtime later) */
+  --row-h: 30px;
+  --pad-x: 14px;
+  --radius: 10px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-glow: 0 0 0 1px var(--accent-mute), 0 0 24px -4px var(--accent-glow);
+
   color-scheme: dark;
 }
 
-html,
-body,
-#root {
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
 }
 
 body {
-  background-color: #070A12;
-  color: #E6EAF2;
-  font-family:
-    'Inter',
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-sans);
   font-size: 13px;
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.005em;
   overflow: hidden;
 }
 
-/* Scrollbars — thin, faintly violet on hover */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(124, 156, 255, 0.12);
-  border-radius: 6px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 156, 255, 0.28);
+/* App background — radial accents for depth */
+.app-bg {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(139, 124, 255, 0.05), transparent 60%),
+    radial-gradient(800px 500px at -10% 110%, rgba(78, 214, 255, 0.04), transparent 60%),
+    var(--bg-0);
 }
 
-/* CodeMirror — match the modern dark palette */
-.cm-editor {
-  background-color: #0C111C !important;
-  height: 100%;
+/* Scrollbars — subtle, thin */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 133, 151, 0.12);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
-.cm-editor.cm-focused {
-  outline: none !important;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 133, 151, 0.25);
+  background-clip: padding-box;
+  border: 2px solid transparent;
 }
+
+::selection {
+  background: var(--accent-mute);
+  color: var(--fg-1);
+}
+
+/* Utility classes used across components */
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'ss01', 'ss02', 'ss06', 'zero', 'cv11';
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.no-sel {
+  user-select: none;
+}
+
+/* Tag pill (connection tag) */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+.tag .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.tag.local { color: var(--fg-3); background: rgba(124, 133, 151, 0.10); }
+.tag.local .dot { background: var(--fg-3); }
+.tag.dev { color: #76E1B6; background: rgba(52, 211, 153, 0.10); }
+.tag.dev .dot { background: var(--ok); }
+.tag.staging { color: #F5C56A; background: rgba(245, 165, 36, 0.10); }
+.tag.staging .dot { background: var(--warn); }
+.tag.production { color: #FF8B98; background: rgba(255, 85, 119, 0.12); }
+.tag.production .dot {
+  background: var(--prod);
+  box-shadow: 0 0 8px var(--prod);
+}
+
+/* Buttons */
+.btn-pri {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: white;
+  font-size: 12.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 6px 14px -6px var(--accent-glow);
+  transition: filter 120ms;
+  border: 0;
+  cursor: pointer;
+}
+.btn-pri:hover { filter: brightness(1.1); }
+.btn-pri:disabled { opacity: 0.5; filter: none; cursor: not-allowed; }
+
+.btn-gh {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--bg-2);
+  color: var(--fg-2);
+  border: 1px solid var(--line-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: color 120ms, border-color 120ms, background 120ms;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-gh:hover {
+  color: var(--fg-1);
+  border-color: var(--line-3);
+  background: var(--bg-3);
+}
+.btn-gh:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--fg-2);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 120ms;
+}
+.link-btn:hover { color: var(--fg-1); }
+
+/* Keyboard hint pill */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  border-bottom-width: 2px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--fg-2);
+}
+
+/* Panel */
+.panel {
+  background: var(--bg-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+}
+
+/* SQL syntax highlighting (hand-painted) */
+.sql .kw    { color: #C99BFF; }
+.sql .fn    { color: #4ED6FF; }
+.sql .str   { color: #FFC78A; }
+.sql .num   { color: #FFD27A; }
+.sql .com   { color: var(--fg-4); font-style: italic; }
+.sql .id    { color: var(--fg-1); }
+.sql .punct { color: var(--fg-3); }
+
+/* Live-data pulse */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+.live-dot { animation: pulse 1.6s ease-in-out infinite; }
+
+/* Shimmer for loading */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--bg-2) 0, var(--bg-3) 50%, var(--bg-2) 100%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* Scrim for modals */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 8, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 50;
+}
+
+/* CodeMirror — match palette */
+.cm-editor { background-color: var(--bg-0) !important; height: 100%; }
+.cm-editor.cm-focused { outline: none !important; }
 .cm-scroller {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
-  font-size: 13.5px;
+  font-family: var(--font-mono) !important;
+  font-size: 13px;
   line-height: 1.55;
 }
 .cm-gutters {
   background-color: transparent !important;
-  border-right: 1px solid #1C2335 !important;
-  color: #3F4D67 !important;
+  border-right: 1px solid var(--line-1) !important;
+  color: var(--fg-4) !important;
 }
 .cm-activeLineGutter,
 .cm-activeLine {
-  background-color: rgba(124, 156, 255, 0.06) !important;
+  background-color: rgba(139, 124, 255, 0.05) !important;
 }
 .cm-selectionBackground,
 .cm-content ::selection {
-  background-color: rgba(124, 156, 255, 0.25) !important;
+  background-color: var(--accent-mute) !important;
 }

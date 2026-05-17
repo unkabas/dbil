@@ -27,6 +27,8 @@ export interface MockTable {
   rows: number
   columns: MockColumn[]
   description?: string
+  size?: string
+  pos?: { x: number; y: number }
 }
 
 export interface MockResult {
@@ -71,77 +73,74 @@ export const mockConnections: MockConnection[] = [
 const tables: Record<number, MockTable[]> = {
   1: [
     {
-      schema: 'public',
-      name: 'users',
-      rows: 12384,
+      schema: 'public', name: 'users', rows: 1_204_551, size: '412 MB',
       description: 'Application user accounts',
+      pos: { x: 60, y: 60 },
       columns: [
-        { name: 'id', type: 'int4', pk: true },
-        { name: 'email', type: 'text', unique: true },
-        { name: 'name', type: 'text', nullable: true },
-        { name: 'created_at', type: 'timestamptz' },
+        { name: 'id',            type: 'int4',        pk: true },
+        { name: 'email',         type: 'text',        unique: true },
+        { name: 'name',          type: 'text',        nullable: true },
+        { name: 'tier',          type: 'user_tier' },
+        { name: 'created_at',    type: 'timestamptz' },
         { name: 'last_login_at', type: 'timestamptz', nullable: true },
       ],
     },
     {
-      schema: 'public',
-      name: 'orders',
-      rows: 84521,
+      schema: 'public', name: 'orders', rows: 9_482_103, size: '2.4 GB',
       description: 'Customer orders',
+      pos: { x: 480, y: 60 },
       columns: [
-        { name: 'id', type: 'int8', pk: true },
-        { name: 'user_id', type: 'int4', fk: { table: 'users', column: 'id' } },
+        { name: 'id',          type: 'int8',         pk: true },
+        { name: 'user_id',     type: 'int4',         fk: { table: 'users', column: 'id' } },
         { name: 'total_cents', type: 'int4' },
-        { name: 'status', type: 'order_status' },
-        { name: 'placed_at', type: 'timestamptz' },
+        { name: 'currency',    type: 'char(3)' },
+        { name: 'status',      type: 'order_status' },
+        { name: 'placed_at',   type: 'timestamptz' },
       ],
     },
     {
-      schema: 'public',
-      name: 'products',
-      rows: 412,
+      schema: 'public', name: 'sessions', rows: 47_812, size: '32 MB',
+      pos: { x: 900, y: 60 },
       columns: [
-        { name: 'id', type: 'int4', pk: true },
-        { name: 'sku', type: 'text', unique: true },
-        { name: 'name', type: 'text' },
-        { name: 'price_cents', type: 'int4' },
-        { name: 'inventory', type: 'int4' },
-      ],
-    },
-    {
-      schema: 'public',
-      name: 'order_items',
-      rows: 218993,
-      columns: [
-        { name: 'order_id', type: 'int8', fk: { table: 'orders', column: 'id' } },
-        { name: 'product_id', type: 'int4', fk: { table: 'products', column: 'id' } },
-        { name: 'quantity', type: 'int4' },
-        { name: 'price_cents', type: 'int4' },
-      ],
-    },
-    {
-      schema: 'public',
-      name: 'sessions',
-      rows: 2391,
-      columns: [
-        { name: 'id', type: 'text', pk: true },
-        { name: 'user_id', type: 'int4', fk: { table: 'users', column: 'id' } },
+        { name: 'id',         type: 'text',        pk: true },
+        { name: 'user_id',    type: 'int4',        fk: { table: 'users', column: 'id' } },
         { name: 'created_at', type: 'timestamptz' },
         { name: 'expires_at', type: 'timestamptz' },
-        { name: 'ip', type: 'inet', nullable: true },
+        { name: 'ip',         type: 'inet',        nullable: true },
       ],
     },
     {
-      schema: 'audit',
-      name: 'audit_log',
-      rows: 1_103_482,
-      description: 'Tamper-evident audit chain',
+      schema: 'public', name: 'products', rows: 1240, size: '0.8 MB',
+      pos: { x: 60, y: 320 },
       columns: [
-        { name: 'id', type: 'int8', pk: true },
-        { name: 'ts_ns', type: 'int8' },
-        { name: 'user_id', type: 'text' },
-        { name: 'action', type: 'text' },
-        { name: 'resource', type: 'text' },
+        { name: 'id',          type: 'int4', pk: true },
+        { name: 'sku',         type: 'text', unique: true },
+        { name: 'name',        type: 'text' },
+        { name: 'price_cents', type: 'int4' },
+        { name: 'inventory',   type: 'int4' },
+      ],
+    },
+    {
+      schema: 'public', name: 'order_items', rows: 28_491_002, size: '8.1 GB',
+      pos: { x: 480, y: 320 },
+      columns: [
+        { name: 'order_id',    type: 'int8', fk: { table: 'orders',   column: 'id' } },
+        { name: 'product_id',  type: 'int4', fk: { table: 'products', column: 'id' } },
+        { name: 'quantity',    type: 'int4' },
+        { name: 'price_cents', type: 'int4' },
+      ],
+    },
+    {
+      schema: 'audit', name: 'audit_log', rows: 1_103_482, size: '612 MB',
+      description: 'Tamper-evident audit chain',
+      pos: { x: 900, y: 320 },
+      columns: [
+        { name: 'id',        type: 'int8',  pk: true },
+        { name: 'ts_ns',     type: 'int8' },
+        { name: 'user_id',   type: 'text' },
+        { name: 'action',    type: 'text' },
+        { name: 'resource',  type: 'text' },
+        { name: 'prev_hash', type: 'bytea' },
       ],
     },
   ],

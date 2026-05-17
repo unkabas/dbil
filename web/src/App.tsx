@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import TopNav from './components/TopNav'
+import Sidebar from './components/Sidebar'
+import TopBar from './components/TopBar'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import SchemaPage from './pages/SchemaPage'
 import QueryPage from './pages/QueryPage'
-import ConnectionsPage from './pages/ConnectionsPage'
 import DataPage from './pages/DataPage'
+import ConnectionsPage from './pages/ConnectionsPage'
+import ObservabilityPage from './pages/ObservabilityPage'
 import { useConnections } from './api/connections'
 import type { ShellContext } from './shell/context'
 
@@ -21,6 +23,7 @@ export default function App() {
             <Route path="/query" element={<QueryPage />} />
             <Route path="/data" element={<DataPage />} />
             <Route path="/data/:schema/:name" element={<DataPage />} />
+            <Route path="/observ" element={<ObservabilityPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
           </Route>
         </Route>
@@ -34,13 +37,10 @@ function AppShell() {
   const { data: connections = [] } = useConnections()
   const [activeConnID, setActiveConnID] = useState<number>(0)
 
-  // Seed active connection from the first server-returned entry once the
-  // list arrives. Don't auto-clobber if the user has already picked one.
   useEffect(() => {
     if (activeConnID === 0 && connections.length > 0) {
       setActiveConnID(connections[0].id)
     }
-    // If the active connection got deleted, fall back to the first remaining.
     if (activeConnID !== 0 && connections.length > 0 && !connections.some((c) => c.id === activeConnID)) {
       setActiveConnID(connections[0].id)
     }
@@ -53,15 +53,18 @@ function AppShell() {
   const ctx: ShellContext = { activeConnID, activeConn, connections, setActiveConnID }
 
   return (
-    <div className="h-full flex flex-col">
-      <TopNav
-        connections={connections}
-        activeConnID={activeConnID}
-        onSelectConnection={setActiveConnID}
-      />
-      <main className="flex-1 min-h-0">
-        <Outlet context={ctx} />
-      </main>
+    <div className="app-bg" style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
+      <Sidebar />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <TopBar
+          connections={connections}
+          activeConnID={activeConnID}
+          onSelectConnection={setActiveConnID}
+        />
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <Outlet context={ctx} />
+        </div>
+      </div>
     </div>
   )
 }

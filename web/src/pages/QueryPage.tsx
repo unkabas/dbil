@@ -125,7 +125,7 @@ export default function QueryPage() {
                 </>
               ) : (
                 <>
-                  <Icon name="play" className="w-3.5 h-3.5" fill="currentColor" />
+                  <Icon name="play" size={13} />
                   <span>Execute</span>
                   <span className="text-[11px] text-white/70 font-normal ml-1">⌘⏎</span>
                 </>

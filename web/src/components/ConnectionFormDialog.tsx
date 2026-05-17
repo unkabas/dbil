@@ -248,7 +248,7 @@ function Select({
           </option>
         ))}
       </select>
-      <Icon name="chevron-down" className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+      <Icon name="chev" className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
     </div>
   )
 }
