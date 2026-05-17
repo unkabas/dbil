@@ -11,6 +11,7 @@ import (
 	"github.com/unkabas/dbil/internal/auth"
 	"github.com/unkabas/dbil/internal/bootstrap"
 	"github.com/unkabas/dbil/internal/config"
+	"github.com/unkabas/dbil/internal/postgres"
 	"github.com/unkabas/dbil/internal/server"
 	"github.com/unkabas/dbil/internal/server/handlers"
 	"github.com/unkabas/dbil/internal/store"
@@ -45,13 +46,20 @@ func serveCmd() *cobra.Command {
 				return fmt.Errorf("serve: apply migrations: %w", err)
 			}
 
-			deps := auth.Deps{
+			authDeps := auth.Deps{
 				Users:    store.NewUsersRepo(db),
 				Sessions: store.NewSessionsRepo(db),
 				Audit:    store.NewAuditRepo(db, mk),
 			}
+			conns := store.NewConnectionsRepo(db, mk)
+			mgr := postgres.NewManager(postgres.NewPGX(), conns)
 
-			handler := handlers.Mount(deps, version)
+			handler := handlers.Mount(handlers.Deps{
+				Auth:    authDeps,
+				Conns:   conns,
+				Manager: mgr,
+				Version: version,
+			})
 			addr := fmt.Sprintf(":%d", cfg.Port)
 			srv := server.New(addr, handler)
 
@@ -60,6 +68,7 @@ func serveCmd() *cobra.Command {
 			go func() {
 				<-ctx.Done()
 				slog.Info("shutdown requested; draining in-flight requests")
+				mgr.Shutdown()
 				_ = srv.Shutdown(context.Background())
 			}()
 

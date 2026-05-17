@@ -11,6 +11,7 @@ import (
 
 	"github.com/unkabas/dbil/internal/auth"
 	"github.com/unkabas/dbil/internal/crypto"
+	"github.com/unkabas/dbil/internal/postgres"
 	"github.com/unkabas/dbil/internal/store"
 )
 
@@ -35,8 +36,10 @@ func setup(t *testing.T) (auth.Deps, http.Handler, store.User) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := auth.Deps{Users: users, Sessions: sessions, Audit: auditRepo}
-	return d, Mount(d, "test"), u
+	ad := auth.Deps{Users: users, Sessions: sessions, Audit: auditRepo}
+	conns := store.NewConnectionsRepo(db, mk)
+	mgr := postgres.NewManager(postgres.NewPGX(), conns)
+	return ad, Mount(Deps{Auth: ad, Conns: conns, Manager: mgr, Version: "test"}), u
 }
 
 func doJSON(t *testing.T, method, path string, body any, headers map[string]string) *http.Request {
