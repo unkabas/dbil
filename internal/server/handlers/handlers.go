@@ -14,6 +14,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/unkabas/dbil/internal/auth"
+	"github.com/unkabas/dbil/internal/observ"
 	"github.com/unkabas/dbil/internal/postgres"
 	"github.com/unkabas/dbil/internal/store"
 )
@@ -21,10 +22,12 @@ import (
 // Deps bundles everything HTTP handlers need from the storage and postgres
 // layers. Constructed once at server start, passed to Mount.
 type Deps struct {
-	Auth    auth.Deps
-	Conns   *store.ConnectionsRepo
-	Manager *postgres.Manager
-	Version string
+	Auth      auth.Deps
+	Conns     *store.ConnectionsRepo
+	Manager   *postgres.Manager
+	Observ    *store.ObservabilityRepo
+	ObservMgr *observ.Manager
+	Version   string
 }
 
 // Mount composes all DBil routes onto a fresh chi.Router and returns it.
@@ -52,6 +55,10 @@ func Mount(d Deps) chi.Router {
 		p.Delete("/api/connections/{id}", DeleteConnection(d))
 		p.Post("/api/connections/{id}/test", TestConnection(d))
 		p.Post("/api/connections/{id}/query", QueryHandler(d))
+
+		p.Get("/api/connections/{id}/observ/overview", OverviewHandler(d))
+		p.Get("/api/connections/{id}/observ/slow", SlowQueriesHandler(d))
+		p.Get("/api/connections/{id}/observ/locks", LocksHandler(d))
 	})
 
 	// --- Static SPA (embedded React bundle) ---

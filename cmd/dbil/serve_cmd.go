@@ -11,6 +11,8 @@ import (
 	"github.com/unkabas/dbil/internal/auth"
 	"github.com/unkabas/dbil/internal/bootstrap"
 	"github.com/unkabas/dbil/internal/config"
+	"github.com/unkabas/dbil/internal/observ"
+	"github.com/unkabas/dbil/internal/policy"
 	"github.com/unkabas/dbil/internal/postgres"
 	"github.com/unkabas/dbil/internal/server"
 	"github.com/unkabas/dbil/internal/server/handlers"
@@ -53,23 +55,50 @@ func serveCmd() *cobra.Command {
 				Audit:    auditRepo,
 			}
 			conns := store.NewConnectionsRepo(db, mk)
-			mgr := postgres.NewManager(postgres.NewPGX(), conns, auditRepo)
+			pgxMgr := postgres.NewManager(postgres.NewPGX(), conns, auditRepo)
+			observRepo := store.NewObservabilityRepo(db)
+
+			observMgr := observ.NewManager(
+				observRepo,
+				func(ctx context.Context, id int64) (postgres.Pool, error) {
+					return pgxMgr.OpenByID(ctx, id, "")
+				},
+				observ.DefaultFactory,
+			)
+
+			// Start collectors for every already-registered connection that
+			// doesn't require a session passphrase. Passphrase-protected
+			// connections start their collectors lazily (Plan 6.1 will wire
+			// an explicit start endpoint).
+			existing, err := conns.List(ctx)
+			if err != nil {
+				slog.Warn("serve: listing existing connections failed", "err", err)
+			}
+			for _, c := range existing {
+				if c.RequiresPassphrase {
+					slog.Info("observ: skipping collectors for passphrase-protected connection",
+						"alias", c.Alias)
+					continue
+				}
+				observMgr.Start(c.ID, policy.PolicyFor(c.Tag).PollInterval)
+			}
 
 			handler := handlers.Mount(handlers.Deps{
-				Auth:    authDeps,
-				Conns:   conns,
-				Manager: mgr,
-				Version: version,
+				Auth:      authDeps,
+				Conns:     conns,
+				Manager:   pgxMgr,
+				Observ:    observRepo,
+				ObservMgr: observMgr,
+				Version:   version,
 			})
 			addr := fmt.Sprintf(":%d", cfg.Port)
 			srv := server.New(addr, handler)
 
-			// Graceful shutdown when ctx is cancelled (root command listens
-			// for SIGINT/SIGTERM and cancels its context).
 			go func() {
 				<-ctx.Done()
 				slog.Info("shutdown requested; draining in-flight requests")
-				mgr.Shutdown()
+				observMgr.Shutdown()
+				pgxMgr.Shutdown()
 				_ = srv.Shutdown(context.Background())
 			}()
 
