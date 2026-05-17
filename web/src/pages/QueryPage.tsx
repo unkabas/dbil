@@ -8,7 +8,6 @@ import { useExecuteQuery, type QueryResult } from '../api/connections'
 import { ApiError } from '../api/client'
 import { sampleSQL } from '../mock/data'
 import Icon from '../components/Icon'
-import StatusPill from '../components/StatusPill'
 
 export default function QueryPage() {
   const { activeConn } = useShellContext()
@@ -23,22 +22,29 @@ export default function QueryPage() {
 
   if (!activeConn) {
     return (
-      <div className="h-full flex items-center justify-center text-ink-300 text-[13px]">
+      <div
+        style={{
+          height: '100%',
+          display: 'grid',
+          placeItems: 'center',
+          color: 'var(--fg-3)',
+          fontSize: 13,
+        }}
+      >
         Add a connection first to run queries.
       </div>
     )
   }
 
-  const conn = activeConn
-  const needsConfirm = conn.tag === 'production' || conn.tag === 'staging'
-  const passphraseRequired = conn.requires_passphrase || needsPassphrase
+  const needsConfirm = activeConn.tag === 'production' || activeConn.tag === 'staging'
+  const passphraseRequired = activeConn.requires_passphrase || needsPassphrase
 
   const run = async () => {
     if (execute.isPending) return
     setError(null)
     try {
       const r = await execute.mutateAsync({
-        id: conn.id,
+        id: activeConn.id,
         sql: text,
         confirm,
         passphrase: passphrase || undefined,
@@ -56,17 +62,10 @@ export default function QueryPage() {
           } else {
             setError(err.body.reason || 'Confirmation required (tick the checkbox)')
           }
-        } else if (err.status === 401) {
-          setError('Invalid passphrase')
-        } else if (err.status === 403) {
-          setError(`Blocked by policy: ${err.body.reason || 'see the server reason'}`)
-        } else if (err.status === 504) {
-          setError('Statement timeout')
-        } else if (err.status === 502) {
-          setError(err.body.error || 'Driver error')
-        } else {
-          setError(err.body.error || `Query failed (${err.status})`)
-        }
+        } else if (err.status === 401) setError('Invalid passphrase')
+        else if (err.status === 403) setError(`Blocked by policy: ${err.body.reason || 'see the server reason'}`)
+        else if (err.status === 504) setError('Statement timeout')
+        else setError(err.body.error || `Query failed (${err.status})`)
       } else {
         setError(err instanceof Error ? err.message : 'Query failed')
       }
@@ -75,7 +74,7 @@ export default function QueryPage() {
 
   return (
     <div
-      className="h-full flex flex-col bg-app-grad"
+      style={{ display: 'grid', gridTemplateRows: '44px 1fr', height: '100%', minHeight: 0 }}
       onKeyDown={(e) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
           e.preventDefault()
@@ -83,58 +82,91 @@ export default function QueryPage() {
         }
       }}
     >
-      <div className="px-6 pt-6 pb-4">
-        <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <h1 className="text-[22px] font-semibold text-ink-50 tracking-tight">Query</h1>
-            <span className="text-ink-400 text-[12.5px] font-mono">{conn.alias}</span>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {passphraseRequired && (
-              <input
-                type="password"
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                placeholder="connection passphrase"
-                className="w-56 h-9 px-3 rounded-md bg-ink-800 border border-ink-700 focus:border-violet focus:outline-none text-[12.5px] text-ink-100 placeholder:text-ink-500"
-              />
-            )}
-            {needsConfirm && (
-              <label className="flex items-center gap-2 text-ink-300 text-[12px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={confirm}
-                  onChange={(e) => setConfirm(e.target.checked)}
-                  className="accent-violet"
-                />
-                <span>
-                  I understand this hits{' '}
-                  <span className="text-ink-100 font-medium">{conn.tag}</span>
-                </span>
-              </label>
-            )}
-            <button
-              onClick={() => void run()}
-              disabled={execute.isPending}
-              className="h-9 px-4 rounded-md bg-violet text-white font-medium text-[13px] flex items-center gap-2 hover:bg-violet-deep transition-colors shadow-glow disabled:opacity-50 disabled:shadow-none"
-            >
-              {execute.isPending ? (
-                <>
-                  <Spinner />
-                  <span>Running…</span>
-                </>
-              ) : (
-                <>
-                  <Icon name="play" size={13} />
-                  <span>Execute</span>
-                  <span className="text-[11px] text-white/70 font-normal ml-1">⌘⏎</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+      {/* Page title strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0 18px',
+          borderBottom: '1px solid var(--line-1)',
+          background: 'var(--bg-0)',
+        }}
+      >
+        <h1 style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>Query</h1>
+        <span style={{ fontSize: 12, color: 'var(--fg-4)' }}>·</span>
+        <span className="mono" style={{ fontSize: 12, color: 'var(--fg-3)' }}>
+          {activeConn.alias}
+        </span>
+        <span style={{ flex: 1 }} />
+        {passphraseRequired && (
+          <input
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder="connection passphrase"
+            style={{
+              width: 220,
+              height: 28,
+              padding: '0 10px',
+              borderRadius: 7,
+              background: 'var(--bg-2)',
+              border: '1px solid var(--line-2)',
+              color: 'var(--fg-1)',
+              fontSize: 12,
+              outline: 0,
+              fontFamily: 'inherit',
+            }}
+          />
+        )}
+        {needsConfirm && (
+          <label
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11.5,
+              color: 'var(--fg-3)',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={confirm}
+              onChange={(e) => setConfirm(e.target.checked)}
+              style={{ accentColor: 'var(--accent)' }}
+            />
+            <span>
+              I understand this hits{' '}
+              <span style={{ color: 'var(--fg-1)', fontWeight: 500 }}>{activeConn.tag}</span>
+            </span>
+          </label>
+        )}
+        <button className="btn-pri" onClick={() => void run()} disabled={execute.isPending}>
+          {execute.isPending ? (
+            <>
+              <Spinner />
+              <span>Running…</span>
+            </>
+          ) : (
+            <>
+              <Icon name="play" size={11} />
+              <span>Execute</span>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>⌘⏎</span>
+            </>
+          )}
+        </button>
+      </div>
 
-        <div className="h-72 rounded-xl border border-ink-700 overflow-hidden shadow-card">
+      {/* Editor + result */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: 'minmax(180px, 38%) 1fr',
+          minHeight: 0,
+        }}
+      >
+        <div style={{ borderBottom: '1px solid var(--line-1)', overflow: 'hidden', background: 'var(--bg-0)' }}>
           <CodeMirror
             value={text}
             onChange={setText}
@@ -152,36 +184,42 @@ export default function QueryPage() {
             }}
           />
         </div>
-      </div>
 
-      <div className="flex-1 min-h-0 px-6 pb-6">
-        <div className="h-full rounded-xl border border-ink-700 overflow-hidden bg-ink-900/50 shadow-card flex flex-col">
-          <div className="h-9 px-3 flex items-center gap-3 border-b border-ink-700 text-[12px]">
-            <span className="text-ink-100 font-medium">Result</span>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg-1)' }}>
+          <div
+            style={{
+              height: 32,
+              padding: '0 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              borderBottom: '1px solid var(--line-1)',
+              fontSize: 11.5,
+            }}
+          >
+            <span style={{ color: 'var(--fg-2)', fontWeight: 500 }}>Result</span>
             {result && (
               <>
                 <Dot />
-                <span className="text-ink-300">{result.command_tag}</span>
+                <span className="mono" style={{ color: 'var(--fg-3)' }}>{result.command_tag}</span>
                 <Dot />
-                <span className="text-ink-300">{result.duration_ms} ms</span>
+                <span className="mono tnum" style={{ color: 'var(--fg-3)' }}>{result.duration_ms} ms</span>
                 {result.rows.length > 0 && (
                   <>
                     <Dot />
-                    <span className="text-ink-300">{result.rows.length} rows</span>
+                    <span className="mono tnum" style={{ color: 'var(--fg-3)' }}>{result.rows.length} rows</span>
                   </>
                 )}
                 {result.truncated && (
                   <>
                     <Dot />
-                    <StatusPill tone="warning" size="xs">
-                      truncated
-                    </StatusPill>
+                    <span style={{ color: 'var(--warn)' }}>truncated</span>
                   </>
                 )}
               </>
             )}
           </div>
-          <div className="flex-1 overflow-auto">
+          <div style={{ flex: 1, overflow: 'auto', background: 'var(--bg-0)' }}>
             {execute.isPending && <CenterMessage>Executing…</CenterMessage>}
             {!execute.isPending && error && <ErrorBanner text={error} />}
             {!execute.isPending && !error && result && <ResultGrid result={result} />}
@@ -198,35 +236,35 @@ export default function QueryPage() {
 function ResultGrid({ result }: { result: QueryResult }) {
   if (result.rows.length === 0) {
     return (
-      <div className="p-6 text-ink-300 text-[13px] font-mono">
-        {result.command_tag} — {result.rows_affected}{' '}
-        {result.rows_affected === 1 ? 'row' : 'rows'} affected
+      <div
+        className="mono"
+        style={{ padding: 18, fontSize: 12, color: 'var(--fg-3)' }}
+      >
+        {result.command_tag} — {result.rows_affected} {result.rows_affected === 1 ? 'row' : 'rows'} affected
       </div>
     )
   }
   return (
-    <table className="font-mono text-[12.5px] border-collapse w-full">
-      <thead className="sticky top-0 z-10 bg-ink-900">
+    <table className="tbl">
+      <thead>
         <tr>
-          <th className="w-12 px-3 py-2 text-right text-ink-400 border-b border-ink-700 font-normal">#</th>
+          <th style={{ width: 48, textAlign: 'right' }}>#</th>
           {result.columns.map((c, i) => (
-            <th key={i} className="px-3 py-2 text-left border-b border-ink-700 font-medium text-ink-100">
-              <div>{c.name}</div>
-              <div className="text-[10.5px] text-accent-lilac font-normal italic">{c.type_name}</div>
+            <th key={i}>
+              <div style={{ color: 'var(--fg-2)' }}>{c.name}</div>
+              <div style={{ fontSize: 10, color: 'var(--c-violet)', fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>
+                {c.type_name}
+              </div>
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
         {result.rows.map((row, i) => (
-          <tr key={i} className="hover:bg-violet/5 transition-colors">
-            <td className="px-3 py-1.5 text-ink-400 text-right border-b border-ink-800">{i + 1}</td>
+          <tr key={i}>
+            <td className="tnum" style={{ textAlign: 'right', color: 'var(--fg-4)' }}>{i + 1}</td>
             {row.map((cell, ci) => (
-              <td
-                key={ci}
-                className="px-3 py-1.5 border-b border-ink-800 truncate max-w-[280px]"
-                title={String(cell ?? '')}
-              >
+              <td key={ci} title={String(cell ?? '')}>
                 {renderCell(cell)}
               </td>
             ))}
@@ -238,15 +276,30 @@ function ResultGrid({ result }: { result: QueryResult }) {
 }
 
 function renderCell(v: unknown) {
-  if (v === null || v === undefined) return <span className="text-ink-400 italic">null</span>
-  if (typeof v === 'boolean') return <span className="text-accent-lime">{String(v)}</span>
-  if (typeof v === 'number') return <span className="text-accent-sky">{String(v)}</span>
-  return <span className="text-ink-100">{String(v)}</span>
+  if (v === null || v === undefined)
+    return <span style={{ color: 'var(--fg-5)', fontStyle: 'italic' }}>null</span>
+  if (typeof v === 'boolean')
+    return <span style={{ color: v ? 'var(--ok)' : 'var(--danger)' }}>{String(v)}</span>
+  if (typeof v === 'number')
+    return <span style={{ color: 'var(--c-cyan)' }} className="tnum">{String(v)}</span>
+  return <span style={{ color: 'var(--fg-1)' }}>{String(v)}</span>
 }
 
 function ErrorBanner({ text }: { text: string }) {
   return (
-    <div className="m-4 p-3 rounded-lg bg-accent-coral/10 border border-accent-coral/40 text-accent-coral text-[12.5px] font-mono whitespace-pre-wrap">
+    <div
+      className="mono"
+      style={{
+        margin: 16,
+        padding: 12,
+        borderRadius: 8,
+        background: 'var(--danger-soft)',
+        border: '1px solid rgba(255,107,122,0.3)',
+        color: 'var(--danger)',
+        fontSize: 12,
+        whiteSpace: 'pre-wrap',
+      }}
+    >
       {text}
     </div>
   )
@@ -254,7 +307,7 @@ function ErrorBanner({ text }: { text: string }) {
 
 function CenterMessage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-full flex items-center justify-center text-ink-400 text-[12.5px]">
+    <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--fg-4)', fontSize: 12 }}>
       {children}
     </div>
   )
@@ -262,7 +315,7 @@ function CenterMessage({ children }: { children: React.ReactNode }) {
 
 function Spinner() {
   return (
-    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
+    <svg className="animate-spin" width="12" height="12" viewBox="0 0 16 16" fill="none">
       <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" />
       <path d="M14 8a6 6 0 0 1-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
@@ -270,5 +323,5 @@ function Spinner() {
 }
 
 function Dot() {
-  return <span className="w-1 h-1 rounded-full bg-ink-600" />
+  return <span style={{ width: 3, height: 3, borderRadius: 2, background: 'var(--line-3)' }} />
 }

@@ -8,7 +8,6 @@ import {
 } from '../api/connections'
 import { ApiError } from '../api/client'
 import TagBadge from '../components/TagBadge'
-import StatusPill from '../components/StatusPill'
 import Icon from '../components/Icon'
 import ConnectionFormDialog from '../components/ConnectionFormDialog'
 import { useShellContext } from '../shell/context'
@@ -20,32 +19,46 @@ export default function ConnectionsPage() {
   const { setActiveConnID } = useShellContext()
 
   return (
-    <div className="h-full overflow-auto bg-app-grad">
-      <div className="max-w-[1100px] mx-auto px-6 py-6">
-        <header className="flex items-end justify-between mb-5">
+    <div className="app-bg" style={{ height: '100%', overflow: 'auto' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 24px 40px' }}>
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            marginBottom: 20,
+          }}
+        >
           <div>
-            <h1 className="text-[22px] font-semibold text-ink-50 tracking-tight">Connections</h1>
-            <p className="text-ink-300 text-[13px] mt-0.5">
+            <h1
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                letterSpacing: '-0.02em',
+                color: 'var(--fg-1)',
+                margin: 0,
+              }}
+            >
+              Connections
+            </h1>
+            <p style={{ fontSize: 12, color: 'var(--fg-3)', margin: '4px 0 0' }} className="tnum">
               {connections.length === 0
                 ? 'No PostgreSQL databases registered yet'
                 : `${connections.length} registered PostgreSQL database${connections.length === 1 ? '' : 's'}`}
             </p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="h-9 px-4 rounded-md bg-violet text-white font-medium text-[13px] flex items-center gap-2 hover:bg-violet-deep transition-colors shadow-glow"
-          >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            <span>Add connection</span>
+          <button className="btn-pri" onClick={() => setShowCreate(true)}>
+            <Icon name="plus" size={12} />
+            Add connection
           </button>
         </header>
 
         {isLoading && <CenterMessage>Loading…</CenterMessage>}
 
         {error && !isLoading && (
-          <div className="p-3 rounded-lg bg-accent-coral/10 border border-accent-coral/40 text-accent-coral text-[12.5px] font-mono">
+          <ErrorBanner>
             {error instanceof ApiError ? error.body.error || `HTTP ${error.status}` : String(error)}
-          </div>
+          </ErrorBanner>
         )}
 
         {!isLoading && !error && connections.length === 0 && (
@@ -53,11 +66,20 @@ export default function ConnectionsPage() {
         )}
 
         {!isLoading && connections.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {connections.map((c) => (
-              <ConnectionCard
+          <div
+            style={{
+              background: 'var(--bg-1)',
+              border: '1px solid var(--line-1)',
+              borderRadius: 10,
+              boxShadow: 'var(--shadow-1)',
+              overflow: 'hidden',
+            }}
+          >
+            {connections.map((c, i) => (
+              <ConnectionRow
                 key={c.id}
                 conn={c}
+                showDivider={i > 0}
                 onOpen={() => {
                   setActiveConnID(c.id)
                   navigate('/')
@@ -77,37 +99,47 @@ export default function ConnectionsPage() {
   )
 }
 
-function ConnectionCard({ conn, onOpen }: { conn: Connection; onOpen(): void }) {
+function ConnectionRow({
+  conn,
+  showDivider,
+  onOpen,
+}: {
+  conn: Connection
+  showDivider: boolean
+  onOpen(): void
+}) {
   const del = useDeleteConnection()
   const test = useTestConnection()
   const [passphrase, setPassphrase] = useState('')
-  const [showPassphrase, setShowPassphrase] = useState(false)
-  const [testStatus, setTestStatus] = useState<
-    null | { kind: 'ok'; version: string } | { kind: 'err'; msg: string }
+  const [needPassphrase, setNeedPassphrase] = useState(false)
+  const [status, setStatus] = useState<
+    | null
+    | { kind: 'ok'; version: string }
+    | { kind: 'err'; msg: string }
   >(null)
 
   const runTest = async () => {
-    setTestStatus(null)
+    setStatus(null)
     try {
       const r = await test.mutateAsync({
         id: conn.id,
         passphrase: passphrase || undefined,
       })
-      setTestStatus({ kind: 'ok', version: r.version })
-      setShowPassphrase(false)
+      setStatus({ kind: 'ok', version: r.version })
+      setNeedPassphrase(false)
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 428) {
-          setShowPassphrase(true)
-          setTestStatus({ kind: 'err', msg: 'Passphrase required' })
+          setNeedPassphrase(true)
+          setStatus({ kind: 'err', msg: 'Passphrase required' })
         } else {
-          setTestStatus({
+          setStatus({
             kind: 'err',
             msg: err.body.reason || err.body.error || `HTTP ${err.status}`,
           })
         }
       } else {
-        setTestStatus({ kind: 'err', msg: err instanceof Error ? err.message : 'Test failed' })
+        setStatus({ kind: 'err', msg: err instanceof Error ? err.message : 'Test failed' })
       }
     }
   }
@@ -122,141 +154,194 @@ function ConnectionCard({ conn, onOpen }: { conn: Connection; onOpen(): void }) 
   }
 
   return (
-    <div className="bg-ink-800/70 backdrop-blur-sm border border-ink-700 rounded-xl shadow-card overflow-hidden hover:border-ink-600 transition-colors">
-      <div className="bg-header-grad px-5 py-4 border-b border-ink-700 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-ink-50 text-[15px] truncate">{conn.alias}</span>
-            <TagBadge tag={conn.tag} size="xs" />
-            {conn.requires_passphrase && <StatusPill tone="warning" size="xs">passphrase</StatusPill>}
+    <div
+      style={{
+        padding: '14px 18px',
+        borderTop: showDivider ? '1px solid var(--line-1)' : 'none',
+        display: 'grid',
+        gap: 14,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-1)', letterSpacing: '-0.01em' }}>
+              {conn.alias}
+            </span>
+            <TagBadge tag={conn.tag} />
+            {conn.requires_passphrase && (
+              <span
+                className="tag staging"
+                style={{ background: 'var(--accent-mute)', color: 'var(--accent-soft)' }}
+              >
+                <Icon name="lock" size={9} /> passphrase
+              </span>
+            )}
           </div>
-          <div className="font-mono text-ink-300 text-[12px] mt-1 truncate">
-            {conn.host}:{conn.port}
+          <div className="mono" style={{ fontSize: 11.5, color: 'var(--fg-4)', marginTop: 4 }}>
+            {conn.host}:{conn.port} · tls={conn.tls_mode}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <IconBtn title="Test" name="refresh" onClick={runTest} loading={test.isPending} />
-          <IconBtn title="Delete" name="trash" onClick={handleDelete} loading={del.isPending} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="btn-gh" onClick={runTest} disabled={test.isPending}>
+            <Icon name="refresh" size={12} style={{ opacity: test.isPending ? 0.4 : 1 }} />
+            {test.isPending ? 'Testing…' : 'Test'}
+          </button>
+          <button className="btn-gh" onClick={onOpen}>
+            <Icon name="schema" size={12} />
+            Browse
+          </button>
+          <button
+            className="btn-gh"
+            onClick={handleDelete}
+            disabled={del.isPending}
+            style={{ color: 'var(--danger)' }}
+            title="Delete"
+          >
+            <Icon name="trash" size={12} />
+          </button>
         </div>
       </div>
 
-      <dl className="px-5 py-3 grid grid-cols-3 gap-2 text-[12.5px]">
-        <Field label="TLS" value={conn.tls_mode} />
-        <Field label="Tag" value={conn.tag} />
-        <Field label="ID" value={String(conn.id)} />
-      </dl>
-
-      {showPassphrase && (
-        <div className="px-5 pb-3">
-          <label className="block">
-            <span className="text-ink-300 text-[11.5px] font-medium mb-1 block">
-              Passphrase
-            </span>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                placeholder="connection passphrase"
-                className="flex-1 h-8 px-3 rounded-md bg-ink-900 border border-ink-700 focus:border-violet focus:outline-none text-[12.5px] text-ink-50"
-              />
-              <button
-                onClick={runTest}
-                disabled={!passphrase || test.isPending}
-                className="h-8 px-3 rounded-md bg-violet text-white text-[12px] font-medium hover:bg-violet-deep disabled:opacity-50"
-              >
-                Retry
-              </button>
-            </div>
-          </label>
+      {needPassphrase && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+            padding: '10px 12px',
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line-2)',
+            borderRadius: 8,
+          }}
+        >
+          <Icon name="lock" size={13} style={{ color: 'var(--accent-soft)' }} />
+          <input
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder="Connection passphrase"
+            style={{
+              flex: 1,
+              height: 26,
+              padding: '0 8px',
+              borderRadius: 6,
+              background: 'var(--bg-1)',
+              border: '1px solid var(--line-2)',
+              color: 'var(--fg-1)',
+              fontSize: 12,
+              outline: 0,
+              fontFamily: 'inherit',
+            }}
+          />
+          <button
+            className="btn-pri"
+            onClick={runTest}
+            disabled={!passphrase || test.isPending}
+            style={{ height: 26 }}
+          >
+            Retry
+          </button>
         </div>
       )}
 
-      {testStatus && (
-        <div className="px-5 pb-3">
-          {testStatus.kind === 'ok' ? (
-            <div className="text-[11.5px] flex items-center gap-2">
-              <StatusPill tone="success" size="xs">Reachable</StatusPill>
-              <span className="text-ink-300 font-mono truncate">{testStatus.version}</span>
-            </div>
+      {status && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 11.5,
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {status.kind === 'ok' ? (
+            <>
+              <span style={{ color: 'var(--ok)' }}>● reachable</span>
+              <span style={{ color: 'var(--fg-3)' }}>{status.version}</span>
+            </>
           ) : (
-            <div className="text-[11.5px] flex items-center gap-2">
-              <StatusPill tone="danger" size="xs">Failed</StatusPill>
-              <span className="text-accent-coral font-mono truncate">{testStatus.msg}</span>
-            </div>
+            <>
+              <span style={{ color: 'var(--danger)' }}>● failed</span>
+              <span style={{ color: 'var(--danger)' }}>{status.msg}</span>
+            </>
           )}
         </div>
       )}
-
-      <div className="px-5 py-3 border-t border-ink-700 flex justify-end">
-        <button
-          onClick={onOpen}
-          className="text-[12.5px] font-medium text-violet hover:text-violet-bright"
-        >
-          Browse schema →
-        </button>
-      </div>
     </div>
   )
 }
 
 function EmptyState({ onAdd }: { onAdd(): void }) {
   return (
-    <div className="border-2 border-dashed border-ink-700 rounded-2xl p-10 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-violet/10 border border-violet/30 flex items-center justify-center mx-auto mb-4">
-        <Icon name="database" className="w-5 h-5 text-violet" />
+    <div
+      style={{
+        border: '1px dashed var(--line-2)',
+        borderRadius: 14,
+        padding: 40,
+        textAlign: 'center',
+        background: 'var(--bg-1)',
+      }}
+    >
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          margin: '0 auto 16px',
+          borderRadius: 12,
+          background: 'var(--accent-mute)',
+          border: '1px solid var(--accent-soft)',
+          display: 'grid',
+          placeItems: 'center',
+          color: 'var(--accent)',
+        }}
+      >
+        <Icon name="schema" size={20} />
       </div>
-      <h3 className="text-ink-50 font-semibold text-[15px] mb-1">No connections yet</h3>
-      <p className="text-ink-300 text-[12.5px] mb-5">
+      <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-1)', margin: 0 }}>
+        No connections yet
+      </h3>
+      <p style={{ fontSize: 12, color: 'var(--fg-3)', marginTop: 6, marginBottom: 20 }}>
         Register a PostgreSQL database to browse its schema and run queries.
       </p>
-      <button
-        onClick={onAdd}
-        className="h-9 px-4 rounded-md bg-violet text-white font-medium text-[13px] hover:bg-violet-deep transition-colors shadow-glow inline-flex items-center gap-2"
-      >
-        <Icon name="plus" className="w-3.5 h-3.5" />
-        <span>Add your first connection</span>
+      <button className="btn-pri" onClick={onAdd}>
+        <Icon name="plus" size={12} />
+        Add your first connection
       </button>
+    </div>
+  )
+}
+
+function ErrorBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        padding: '10px 12px',
+        borderRadius: 8,
+        background: 'var(--danger-soft)',
+        border: '1px solid rgba(255,107,122,0.3)',
+        color: 'var(--danger)',
+        fontSize: 12,
+        fontFamily: 'var(--font-mono)',
+      }}
+    >
+      {children}
     </div>
   )
 }
 
 function CenterMessage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-40 flex items-center justify-center text-ink-300 text-[13px]">
+    <div
+      style={{
+        height: 160,
+        display: 'grid',
+        placeItems: 'center',
+        color: 'var(--fg-3)',
+        fontSize: 13,
+      }}
+    >
       {children}
     </div>
-  )
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-ink-400 text-[10.5px] uppercase tracking-wider">{label}</dt>
-      <dd className="text-ink-100 font-mono">{value}</dd>
-    </div>
-  )
-}
-
-function IconBtn({
-  title,
-  name,
-  onClick,
-  loading,
-}: {
-  title: string
-  name: 'refresh' | 'trash'
-  onClick(): void
-  loading?: boolean
-}) {
-  return (
-    <button
-      title={title}
-      onClick={onClick}
-      disabled={loading}
-      className="p-1.5 rounded-md hover:bg-ink-700 text-ink-300 hover:text-ink-50 disabled:opacity-50"
-    >
-      <Icon name={name} className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-    </button>
   )
 }
