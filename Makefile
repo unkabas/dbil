@@ -1,4 +1,4 @@
-.PHONY: help tidy build test lint cover generate docker run-init
+.PHONY: help tidy build test lint lint-auth cover generate docker run-init
 
 GO ?= go
 BIN ?= ./bin/dbil
@@ -30,6 +30,9 @@ test:
 
 lint:
 	golangci-lint run
+
+lint-auth:
+	$(GO) run ./scripts/lint-auth
 
 cover: test
 	$(GO) tool cover -html=coverage.out -o coverage.html
