@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -93,6 +94,12 @@ func CreateConnection(d Deps) http.HandlerFunc {
 		}
 		auditAppend(r, d, "connection.create", fmt.Sprintf("conn:%d", c.ID),
 			map[string]any{"alias": c.Alias, "tag": c.Tag, "tls_mode": c.TLSMode})
+		// Start observability collectors for connections that don't need a
+		// per-session passphrase. Passphrase-protected ones wait until a user
+		// explicitly opens them (Plan 6.1 will add a /start-collectors hook).
+		if d.ObservMgr != nil && !c.RequiresPassphrase {
+			d.ObservMgr.Start(c.ID, pollIntervalFor(c.Tag))
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(toView(c))
@@ -136,9 +143,28 @@ func DeleteConnection(d Deps) http.HandlerFunc {
 			jsonError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
+		if d.ObservMgr != nil {
+			d.ObservMgr.Stop(id)
+		}
 		d.Manager.CloseConn(id)
 		auditAppend(r, d, "connection.delete", fmt.Sprintf("conn:%d", id), nil)
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// pollIntervalFor maps a connection tag to its collector tick cadence. Kept
+// here (not imported from internal/policy) to avoid pulling the policy
+// package into every handler test set; the values match policy.PolicyFor.
+func pollIntervalFor(tag string) time.Duration {
+	switch tag {
+	case store.TagProduction:
+		return 5 * time.Second
+	case store.TagStaging:
+		return 10 * time.Second
+	case store.TagDev:
+		return 30 * time.Second
+	default:
+		return 60 * time.Second
 	}
 }
 
