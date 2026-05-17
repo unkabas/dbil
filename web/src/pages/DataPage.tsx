@@ -1,30 +1,28 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { findTable, mockRowsFor, tablesFor } from '../mock/data'
-import StatusPill from '../components/StatusPill'
-import Icon from '../components/Icon'
+import { findTable, mockRowsFor, tablesFor, type MockTable } from '../mock/data'
 import { useShellContext } from '../shell/context'
+import Icon from '../components/Icon'
+
+const PAGE_SIZE = 25
 
 export default function DataPage() {
-  const { activeConnID } = useShellContext()
+  const { activeConnID, activeConn } = useShellContext()
   const { schema, name } = useParams<{ schema: string; name: string }>()
   const navigate = useNavigate()
   const tables = tablesFor(activeConnID)
 
-  // No table in URL → land on the first table for this connection.
-  const effective =
-    schema && name
-      ? findTable(activeConnID, schema, name)
-      : tables[0]
+  const effective: MockTable | undefined =
+    schema && name ? findTable(activeConnID, schema, name) : tables[0]
 
   const [filter, setFilter] = useState('')
   const [sort, setSort] = useState<{ col: number; dir: 'asc' | 'desc' } | null>(null)
   const [page, setPage] = useState(0)
-  const pageSize = 25
+  const [showPicker, setShowPicker] = useState(false)
 
   if (!effective) {
     return (
-      <div className="h-full flex items-center justify-center text-ink-300 text-[13px]">
+      <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--fg-3)', fontSize: 13 }}>
         No tables in this connection.
       </div>
     )
@@ -52,206 +50,443 @@ export default function DataPage() {
     return rows
   }, [allRows, filter, sort])
 
-  const totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize))
-  const pageRows = visibleRows.slice(page * pageSize, page * pageSize + pageSize)
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE))
+  const pageRows = visibleRows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
   return (
-    <div className="h-full overflow-auto bg-app-grad">
-      <div className="max-w-[1500px] mx-auto px-6 py-6">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-[12.5px] mb-3">
-          <button
-            onClick={() => navigate('/')}
-            className="text-ink-400 hover:text-ink-100 transition-colors"
-          >
-            Schema
-          </button>
-          <Icon name="chevron-right" className="w-3 h-3 text-ink-500" />
-          <span className="text-ink-400 font-mono">{effective.schema}</span>
-          <Icon name="chevron-right" className="w-3 h-3 text-ink-500" />
-          <span className="text-ink-50 font-mono font-medium">{effective.name}</span>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateRows: '44px 48px 1fr 36px',
+        height: '100%',
+        minHeight: 0,
+      }}
+    >
+      {/* Top title */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0 18px',
+          borderBottom: '1px solid var(--line-1)',
+          background: 'var(--bg-0)',
+        }}
+      >
+        <h1 style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>Data</h1>
+        <span style={{ fontSize: 12, color: 'var(--fg-4)' }}>·</span>
+        <span className="mono" style={{ fontSize: 12, color: 'var(--fg-3)' }}>
+          {effective.schema}.{effective.name}
+        </span>
+        <span style={{ flex: 1 }} />
+        <button className="btn-gh" title="Refresh">
+          <Icon name="refresh" size={12} />
+        </button>
+        <button className="btn-gh">
+          <Icon name="download" size={12} /> Export
+        </button>
+        <button className="btn-gh">
+          <Icon name="plus" size={12} /> Insert row
+        </button>
+      </div>
+
+      {/* Sub bar: table picker + filter */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0 18px',
+          borderBottom: '1px solid var(--line-1)',
+          background: 'var(--bg-1)',
+        }}
+      >
+        <TablePicker
+          tables={tables}
+          value={`${effective.schema}.${effective.name}`}
+          onChange={(k) => {
+            const [s, n] = k.split('.')
+            navigate(`/data/${s}/${n}`)
+          }}
+          open={showPicker}
+          setOpen={setShowPicker}
+        />
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line-2)',
+            borderRadius: 7,
+            height: 28,
+            padding: '0 8px',
+            flex: 1,
+            maxWidth: 360,
+          }}
+        >
+          <Icon name="filter" size={12} style={{ color: 'var(--fg-4)' }} />
+          <input
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value)
+              setPage(0)
+            }}
+            placeholder="Quick filter (any column contains…)"
+            style={{
+              flex: 1,
+              height: 26,
+              background: 'transparent',
+              border: 0,
+              outline: 0,
+              color: 'var(--fg-1)',
+              fontSize: 12,
+              fontFamily: 'inherit',
+            }}
+          />
+          {filter && (
+            <button onClick={() => setFilter('')} style={{ color: 'var(--fg-4)', background: 'none', border: 0, cursor: 'pointer' }}>
+              <Icon name="x" size={11} />
+            </button>
+          )}
         </div>
 
-        {/* Header */}
-        <header className="flex items-end justify-between mb-5">
-          <div>
-            <h1 className="text-[24px] font-semibold text-ink-50 tracking-tight font-mono">
-              {effective.schema}.{effective.name}
-            </h1>
-            <div className="flex items-center gap-2 mt-1.5 text-ink-300 text-[12.5px]">
-              <span>{effective.rows.toLocaleString()} rows total</span>
-              <Dot />
-              <span>{effective.columns.length} columns</span>
-              <Dot />
-              <StatusPill tone="success" size="xs">in sync</StatusPill>
-            </div>
-          </div>
+        <span style={{ flex: 1 }} />
+        <span className="mono tnum" style={{ fontSize: 11, color: 'var(--fg-4)' }}>
+          {visibleRows.length === allRows.length
+            ? `${allRows.length} rows`
+            : `${visibleRows.length} of ${allRows.length} rows`}
+        </span>
+      </div>
 
-          <div className="flex items-center gap-2">
-            <SearchInput value={filter} onChange={setFilter} />
-            <IconButton title="Refresh" name="refresh" />
-            <IconButton title="Export" name="plus" />
-          </div>
-        </header>
-
-        {/* Table */}
-        <div className="bg-ink-900/50 border border-ink-700 rounded-xl shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full font-mono text-[12.5px] border-collapse">
-              <thead className="bg-ink-800/60 backdrop-blur-sm sticky top-0 z-10">
-                <tr>
-                  <th className="w-12 px-3 py-2.5 text-right text-ink-400 font-normal border-b border-ink-700">#</th>
-                  {effective.columns.map((c, ci) => {
-                    const isSorted = sort?.col === ci
-                    return (
-                      <th
-                        key={c.name}
-                        onClick={() =>
-                          setSort((prev) =>
-                            prev?.col === ci
-                              ? prev.dir === 'asc'
-                                ? { col: ci, dir: 'desc' }
-                                : null
-                              : { col: ci, dir: 'asc' },
-                          )
-                        }
-                        className="px-3 py-2.5 text-left border-b border-ink-700 cursor-pointer hover:bg-ink-700/40 select-none"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-ink-50 font-medium">{c.name}</span>
-                          {c.pk && (
-                            <span className="text-[9px] text-accent-gold tracking-wider">PK</span>
-                          )}
-                          {c.fk && (
-                            <span className="text-[9px] text-accent-lilac tracking-wider">FK</span>
-                          )}
-                          <span className="ml-auto text-ink-400 opacity-60 group-hover:opacity-100">
-                            <SortChevron state={isSorted ? sort!.dir : null} />
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-accent-lilac font-normal italic mt-0.5">
-                          {c.type}
-                        </div>
-                      </th>
-                    )
-                  })}
+      {/* Table */}
+      <div style={{ overflow: 'auto', background: 'var(--bg-0)' }}>
+        <table className="tbl" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={thBase}>#</th>
+              {effective.columns.map((c, ci) => {
+                const isSorted = sort?.col === ci
+                return (
+                  <th
+                    key={c.name}
+                    onClick={() =>
+                      setSort((prev) =>
+                        prev?.col === ci
+                          ? prev.dir === 'asc'
+                            ? { col: ci, dir: 'desc' }
+                            : null
+                          : { col: ci, dir: 'asc' },
+                      )
+                    }
+                    style={{ ...thBase, cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: 'var(--fg-1)' }}>{c.name}</span>
+                      {c.pk && (
+                        <span style={{ color: 'var(--c-amber)', fontSize: 9, letterSpacing: '0.05em' }}>
+                          PK
+                        </span>
+                      )}
+                      {c.fk && (
+                        <span style={{ color: 'var(--c-cyan)', fontSize: 9, letterSpacing: '0.05em' }}>
+                          FK
+                        </span>
+                      )}
+                      <span style={{ marginLeft: 'auto' }}>
+                        <SortChevron state={isSorted ? sort!.dir : null} />
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: 'var(--c-violet)',
+                        fontStyle: 'italic',
+                        marginTop: 2,
+                        textTransform: 'none',
+                        letterSpacing: 0,
+                      }}
+                    >
+                      {c.type}
+                    </div>
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((row, i) => {
+              const idx = page * PAGE_SIZE + i
+              return (
+                <tr key={i} style={trBase}>
+                  <td style={{ ...tdBase, textAlign: 'right', color: 'var(--fg-4)' }} className="tnum">
+                    {idx + 1}
+                  </td>
+                  {row.map((cell, ci) => (
+                    <td key={ci} style={tdBase} title={String(cell ?? '')}>
+                      {renderCell(effective.columns[ci].type, cell)}
+                    </td>
+                  ))}
                 </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((row, i) => {
-                  const absoluteIndex = page * pageSize + i
-                  return (
-                    <tr key={i} className="hover:bg-violet/[0.04] transition-colors">
-                      <td className="px-3 py-1.5 text-right text-ink-400 border-b border-ink-800">
-                        {absoluteIndex + 1}
-                      </td>
-                      {row.map((cell, ci) => (
-                        <td
-                          key={ci}
-                          className="px-3 py-1.5 border-b border-ink-800 truncate max-w-[260px]"
-                          title={String(cell ?? '')}
-                        >
-                          {renderCell(effective.columns[ci].type, cell)}
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
 
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-ink-700 text-[11.5px] text-ink-300">
-            <div className="flex items-center gap-3">
-              <span>Rows per page</span>
-              <select className="appearance-none bg-ink-800 border border-ink-700 hover:border-ink-600 rounded-md px-2 py-0.5 text-ink-100" value={pageSize} disabled>
-                <option>{pageSize}</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <span>
-                {visibleRows.length === 0
-                  ? '0 of 0'
-                  : `${page * pageSize + 1} – ${Math.min((page + 1) * pageSize, visibleRows.length)} of ${visibleRows.length}`}
-              </span>
-              <button
-                onClick={() => setPage(0)}
-                disabled={page === 0}
-                className="p-1.5 rounded hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent"
-                title="First"
-              >
-                «
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="p-1.5 rounded hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent"
-                title="Previous"
-              >
-                ‹
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="p-1.5 rounded hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent"
-                title="Next"
-              >
-                ›
-              </button>
-              <button
-                onClick={() => setPage(totalPages - 1)}
-                disabled={page >= totalPages - 1}
-                className="p-1.5 rounded hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent"
-                title="Last"
-              >
-                »
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Other tables in this connection (quick jump) */}
-        <div className="mt-6">
-          <div className="text-ink-400 text-[11px] uppercase tracking-wider mb-2">
-            Other tables in this connection
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {tables
-              .filter((t) => !(t.schema === effective.schema && t.name === effective.name))
-              .map((t) => (
-                <button
-                  key={`${t.schema}.${t.name}`}
-                  onClick={() => navigate(`/data/${t.schema}/${t.name}`)}
-                  className="px-3 py-1.5 rounded-lg bg-ink-800 border border-ink-700 hover:border-violet/40 text-[12px] font-mono text-ink-200 hover:text-ink-50 transition-colors"
-                >
-                  {t.schema}.{t.name}
-                  <span className="ml-2 text-ink-400 text-[10px]">
-                    {formatRowCount(t.rows)} rows
-                  </span>
-                </button>
-              ))}
-          </div>
-        </div>
+      {/* Pagination strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 18px',
+          borderTop: '1px solid var(--line-1)',
+          background: 'var(--bg-1)',
+          fontSize: 11.5,
+          color: 'var(--fg-3)',
+          gap: 14,
+        }}
+      >
+        <span>
+          Showing{' '}
+          <span className="tnum mono" style={{ color: 'var(--fg-1)' }}>
+            {visibleRows.length === 0 ? 0 : page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, visibleRows.length)}
+          </span>{' '}
+          of{' '}
+          <span className="tnum mono" style={{ color: 'var(--fg-1)' }}>{visibleRows.length}</span>
+        </span>
+        <span style={{ flex: 1 }} />
+        <PageBtn disabled={page === 0} onClick={() => setPage(0)} title="First">
+          «
+        </PageBtn>
+        <PageBtn disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+          ‹
+        </PageBtn>
+        <span className="tnum mono" style={{ color: 'var(--fg-2)' }}>
+          page {page + 1}/{totalPages}
+        </span>
+        <PageBtn
+          disabled={page >= totalPages - 1}
+          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+        >
+          ›
+        </PageBtn>
+        <PageBtn disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} title="Last">
+          »
+        </PageBtn>
+        <span style={{ marginLeft: 12, color: 'var(--fg-4)' }}>{activeConn?.alias ?? '—'}</span>
       </div>
     </div>
   )
 }
 
+const thBase: React.CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  background: 'var(--bg-1)',
+  color: 'var(--fg-3)',
+  fontWeight: 500,
+  textAlign: 'left',
+  fontSize: 11,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+  padding: '8px 12px',
+  borderBottom: '1px solid var(--line-1)',
+  whiteSpace: 'nowrap',
+}
+
+const tdBase: React.CSSProperties = {
+  padding: '0 12px',
+  height: 'var(--row-h, 30px)',
+  borderBottom: '1px solid var(--line-1)',
+  color: 'var(--fg-2)',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  maxWidth: 260,
+}
+
+const trBase: React.CSSProperties = {
+  // hover handled inline; CSS rule would need a sibling class
+}
+
+function PageBtn({
+  children,
+  onClick,
+  disabled,
+  title,
+}: {
+  children: React.ReactNode
+  onClick(): void
+  disabled?: boolean
+  title?: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: 5,
+        background: 'transparent',
+        border: 0,
+        color: 'var(--fg-3)',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.35 : 1,
+        fontFamily: 'inherit',
+        fontSize: 13,
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) e.currentTarget.style.background = 'var(--bg-3)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent'
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function TablePicker({
+  tables,
+  value,
+  onChange,
+  open,
+  setOpen,
+}: {
+  tables: MockTable[]
+  value: string
+  onChange(k: string): void
+  open: boolean
+  setOpen(b: boolean): void
+}) {
+  const [s, n] = value.split('.')
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          height: 28,
+          padding: '0 10px',
+          background: 'var(--bg-2)',
+          border: '1px solid var(--line-2)',
+          borderRadius: 7,
+          color: 'var(--fg-1)',
+          fontSize: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        <Icon name="table" size={12} style={{ color: 'var(--fg-3)' }} />
+        <span className="mono">
+          <span style={{ color: 'var(--fg-4)' }}>{s}.</span>
+          <span style={{ color: 'var(--fg-1)', fontWeight: 500 }}>{n}</span>
+        </span>
+        <Icon name="chev" size={11} style={{ color: 'var(--fg-3)' }} />
+      </button>
+      {open && (
+        <div
+          onMouseLeave={() => setOpen(false)}
+          style={{
+            position: 'absolute',
+            top: 32,
+            left: 0,
+            width: 280,
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line-2)',
+            borderRadius: 10,
+            boxShadow: 'var(--shadow-pop)',
+            padding: 6,
+            zIndex: 30,
+            maxHeight: 360,
+            overflow: 'auto',
+          }}
+        >
+          {tables.map((t) => {
+            const k = `${t.schema}.${t.name}`
+            const selected = k === value
+            return (
+              <button
+                key={k}
+                onClick={() => {
+                  onChange(k)
+                  setOpen(false)
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '7px 10px',
+                  background: selected ? 'var(--accent-mute)' : 'transparent',
+                  border: 0,
+                  color: 'var(--fg-1)',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  marginBottom: 1,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  textAlign: 'left',
+                }}
+              >
+                <Icon name="table" size={11} style={{ color: selected ? 'var(--accent)' : 'var(--fg-4)' }} />
+                <span className="mono" style={{ flex: 1 }}>
+                  <span style={{ color: 'var(--fg-4)' }}>{t.schema}.</span>
+                  <span>{t.name}</span>
+                </span>
+                <span className="mono tnum" style={{ fontSize: 10.5, color: 'var(--fg-4)' }}>
+                  {fmtCount(t.rows)}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function renderCell(type: string, v: unknown) {
-  if (v === null || v === undefined) return <span className="text-ink-500 italic">null</span>
-  if (typeof v === 'boolean')
-    return (
-      <span className={v ? 'text-accent-lime' : 'text-accent-coral'}>{String(v)}</span>
-    )
-  if (typeof v === 'number')
-    return <span className="text-accent-sky tabular-nums">{String(v)}</span>
+  if (v === null || v === undefined) return <span style={{ color: 'var(--fg-5)', fontStyle: 'italic' }}>null</span>
+  if (typeof v === 'boolean') return <span style={{ color: v ? 'var(--ok)' : 'var(--danger)' }}>{String(v)}</span>
+  if (typeof v === 'number') return <span style={{ color: 'var(--c-cyan)' }} className="tnum">{String(v)}</span>
   const s = String(v)
-  // status-like columns get a pill
-  if (type.toLowerCase() === 'order_status' || ['placed','paid','shipped','delivered','returned'].includes(s)) {
-    const tone = s === 'returned' ? 'danger' : s === 'shipped' || s === 'delivered' ? 'success' : 'info'
-    return <StatusPill tone={tone} size="xs">{s}</StatusPill>
+  if (type === 'user_tier' || ['free', 'pro', 'team'].includes(s)) {
+    const tone =
+      s === 'pro' ? 'var(--c-amber)' :
+      s === 'team' ? 'var(--c-violet)' : 'var(--fg-3)'
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          padding: '0 6px',
+          borderRadius: 4,
+          fontSize: 11,
+          color: tone,
+          background: 'var(--bg-3)',
+          fontFamily: 'var(--font-mono)',
+        }}
+      >
+        {s}
+      </span>
+    )
   }
-  return <span className="text-ink-100">{s}</span>
+  if (type === 'order_status' || ['placed', 'paid', 'shipped', 'delivered', 'returned'].includes(s)) {
+    const tone =
+      s === 'returned' ? 'var(--danger)' :
+      s === 'shipped' || s === 'delivered' ? 'var(--ok)' :
+      'var(--c-cyan)'
+    return <span style={{ color: tone }}>{s}</span>
+  }
+  return <span style={{ color: 'var(--fg-1)' }}>{s}</span>
 }
 
 function SortChevron({ state }: { state: 'asc' | 'desc' | null }) {
@@ -259,54 +494,22 @@ function SortChevron({ state }: { state: 'asc' | 'desc' | null }) {
     <svg viewBox="0 0 10 14" width="8" height="11" fill="none" stroke="currentColor" strokeWidth="1.6">
       <path
         d="M5 1l3 3.5H2L5 1z"
-        className={state === 'asc' ? 'text-violet' : 'text-ink-500'}
         stroke="currentColor"
         fill={state === 'asc' ? 'currentColor' : 'none'}
+        style={{ color: state === 'asc' ? 'var(--accent)' : 'var(--fg-5)' }}
       />
       <path
         d="M5 13l3-3.5H2L5 13z"
-        className={state === 'desc' ? 'text-violet' : 'text-ink-500'}
         stroke="currentColor"
         fill={state === 'desc' ? 'currentColor' : 'none'}
+        style={{ color: state === 'desc' ? 'var(--accent)' : 'var(--fg-5)' }}
       />
     </svg>
   )
 }
 
-function SearchInput({ value, onChange }: { value: string; onChange(v: string): void }) {
-  return (
-    <div className="relative">
-      <svg viewBox="0 0 16 16" className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <circle cx="7" cy="7" r="4.5" />
-        <path d="M11 11l3 3" strokeLinecap="round" />
-      </svg>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Search rows…"
-        className="w-72 h-9 pl-8 pr-3 rounded-lg bg-ink-800 border border-ink-700 focus:border-violet focus:outline-none text-[12.5px] text-ink-100 placeholder:text-ink-400"
-      />
-    </div>
-  )
-}
-
-function IconButton({ title, name }: { title: string; name: 'refresh' | 'plus' }) {
-  return (
-    <button
-      title={title}
-      className="w-9 h-9 flex items-center justify-center rounded-lg bg-ink-800 border border-ink-700 hover:border-violet/40 text-ink-300 hover:text-ink-50"
-    >
-      <Icon name={name} className="w-3.5 h-3.5" />
-    </button>
-  )
-}
-
-function Dot() {
-  return <span className="w-1 h-1 rounded-full bg-ink-600" />
-}
-
-function formatRowCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+function fmtCount(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'k'
   return String(n)
 }
