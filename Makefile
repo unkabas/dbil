@@ -1,7 +1,9 @@
-.PHONY: help tidy build test lint lint-auth cover generate docker run-init
+.PHONY: help tidy build test lint lint-auth cover generate docker run-init web-deps web-build
 
-GO ?= go
-BIN ?= ./bin/dbil
+GO   ?= go
+NPM  ?= npm
+BIN  ?= ./bin/dbil
+WEB  ?= ./web
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -10,9 +12,13 @@ LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.dat
 help:
 	@echo "Targets:"
 	@echo "  tidy      - go mod tidy"
-	@echo "  build     - build $(BIN)"
+	@echo "  web-deps  - install frontend dependencies (npm install in $(WEB))"
+	@echo "  web-build - build the frontend bundle into $(WEB)/dist"
+	@echo "  build     - build $(BIN) (depends on web-build so the binary"
+	@echo "              ships with the SPA embedded)"
 	@echo "  test      - run all tests with race detector + coverage"
 	@echo "  lint      - golangci-lint run"
+	@echo "  lint-auth - static check that every API handler is gated"
 	@echo "  cover     - generate HTML coverage report"
 	@echo "  generate  - run sqlc"
 	@echo "  docker    - docker build -t dbil:dev ."
@@ -21,7 +27,13 @@ help:
 tidy:
 	$(GO) mod tidy
 
-build:
+web-deps:
+	cd $(WEB) && $(NPM) install --no-audit --no-fund
+
+web-build: web-deps
+	cd $(WEB) && $(NPM) run build
+
+build: web-build
 	mkdir -p $(dir $(BIN))
 	$(GO) build -trimpath -ldflags='$(LDFLAGS)' -o $(BIN) ./cmd/dbil
 

@@ -1,5 +1,15 @@
 # syntax=docker/dockerfile:1.7
 
+# Stage 1: build the React SPA. Single stage for all target arches because
+# the output is platform-agnostic static assets.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY web/ ./
+RUN npm run build
+
+# Stage 2: build the Go binary. Embeds the SPA produced by the web stage.
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS build
 ARG TARGETOS
 ARG TARGETARCH
@@ -12,13 +22,18 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
+# .dockerignore excludes dist/ from the source copy so we always rely on the
+# fresh bundle produced by the web stage just above.
 COPY . .
+COPY --from=web /web/dist ./web/dist
 
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath \
         -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
         -o /out/dbil ./cmd/dbil
 
+# Stage 3: minimal runtime image. Static binary + the SPA both live inside
+# /dbil — no external assets at runtime.
 FROM gcr.io/distroless/static-debian12:nonroot
 
 LABEL org.opencontainers.image.title="dbil"
