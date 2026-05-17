@@ -14,10 +14,21 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/unkabas/dbil/internal/auth"
+	"github.com/unkabas/dbil/internal/postgres"
+	"github.com/unkabas/dbil/internal/store"
 )
 
+// Deps bundles everything HTTP handlers need from the storage and postgres
+// layers. Constructed once at server start, passed to Mount.
+type Deps struct {
+	Auth    auth.Deps
+	Conns   *store.ConnectionsRepo
+	Manager *postgres.Manager
+	Version string
+}
+
 // Mount composes all DBil routes onto a fresh chi.Router and returns it.
-func Mount(d auth.Deps, version string) chi.Router {
+func Mount(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
@@ -26,14 +37,20 @@ func Mount(d auth.Deps, version string) chi.Router {
 	r.Use(slogRequestLogger())
 
 	// --- Unauthed (allowlisted in scripts/lint-auth) ---
-	r.Get("/healthz", Healthz(version))
-	r.Post("/api/auth/login", LoginHandler(d))
+	r.Get("/healthz", Healthz(d.Version))
+	r.Post("/api/auth/login", LoginHandler(d.Auth))
 
 	// --- Authed: every handler under this group is protected by RequireAuth ---
 	r.Group(func(p chi.Router) {
-		p.Use(auth.RequireAuth(d))
-		p.Post("/api/auth/logout", LogoutHandler(d))
+		p.Use(auth.RequireAuth(d.Auth))
+		p.Post("/api/auth/logout", LogoutHandler(d.Auth))
 		p.Get("/api/me", MeHandler())
+
+		p.Get("/api/connections", ListConnections(d))
+		p.Post("/api/connections", CreateConnection(d))
+		p.Get("/api/connections/{id}", GetConnection(d))
+		p.Delete("/api/connections/{id}", DeleteConnection(d))
+		p.Post("/api/connections/{id}/test", TestConnection(d))
 	})
 
 	return r
