@@ -1,29 +1,38 @@
 import { NavLink } from 'react-router-dom'
-import { mockConnections } from '../mock/data'
+import type { Connection } from '../api/connections'
 import TagBadge from './TagBadge'
 import Icon from './Icon'
 import { useAuth } from '../auth/AuthContext'
 
 interface Props {
+  connections: Connection[]
   activeConnID: number
   onSelectConnection(id: number): void
 }
 
-export default function TopNav({ activeConnID, onSelectConnection }: Props) {
+export default function TopNav({ connections, activeConnID, onSelectConnection }: Props) {
   const { user, logout } = useAuth()
-  const active = mockConnections.find((c) => c.id === activeConnID) ?? mockConnections[0]
+  const active = connections.find((c) => c.id === activeConnID)
 
   return (
     <header className="bg-ink-900/85 backdrop-blur-sm border-b border-ink-700 select-none">
       <div className="h-14 flex items-center px-5 gap-6">
         <Logo />
         <div className="flex-1" />
-        <ConnectionSelect value={active.id} onChange={onSelectConnection} />
-        <TagBadge tag={active.tag} />
+        {connections.length > 0 ? (
+          <ConnectionSelect
+            connections={connections}
+            value={activeConnID}
+            onChange={onSelectConnection}
+          />
+        ) : (
+          <span className="text-ink-400 text-[12.5px]">No connections yet</span>
+        )}
+        {active && <TagBadge tag={active.tag} />}
         <div className="flex items-center gap-1 pl-3 ml-1 border-l border-ink-700">
           <span className="text-ink-300 text-[12px]">{user?.email}</span>
           <button
-            onClick={logout}
+            onClick={() => void logout()}
             className="ml-1 p-1.5 rounded-md hover:bg-ink-700 text-ink-300 hover:text-ink-50"
             title="Sign out"
           >
@@ -82,9 +91,11 @@ function Logo() {
 }
 
 function ConnectionSelect({
+  connections,
   value,
   onChange,
 }: {
+  connections: Connection[]
   value: number
   onChange(id: number): void
 }) {
@@ -95,7 +106,7 @@ function ConnectionSelect({
         onChange={(e) => onChange(Number(e.target.value))}
         className="appearance-none bg-ink-800 border border-ink-700 hover:border-ink-600 focus:border-violet focus:outline-none rounded-lg h-9 pl-3 pr-9 text-[13px] text-ink-50 font-medium min-w-[220px]"
       >
-        {mockConnections.map((c) => (
+        {connections.map((c) => (
           <option key={c.id} value={c.id}>
             {c.alias}
           </option>

@@ -3,21 +3,26 @@ import CodeMirror from '@uiw/react-codemirror'
 import { sql, PostgreSQL } from '@codemirror/lang-sql'
 import { darcula } from '@uiw/codemirror-theme-darcula'
 import { EditorView } from '@codemirror/view'
-import { mockConnections, mockResultFor, sampleSQL, type MockResult } from '../mock/data'
+import { mockResultFor, sampleSQL, type MockResult } from '../mock/data'
 import Icon from '../components/Icon'
+import { useShellContext } from '../shell/context'
 
-interface Props {
-  activeConnID: number
-}
-
-export default function QueryPage({ activeConnID }: Props) {
-  const conn = mockConnections.find((c) => c.id === activeConnID) ?? mockConnections[0]
+export default function QueryPage() {
+  const { activeConn } = useShellContext()
   const [text, setText] = useState(sampleSQL)
   const [result, setResult] = useState<MockResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
   const [confirm, setConfirm] = useState(false)
 
+  if (!activeConn) {
+    return (
+      <div className="h-full flex items-center justify-center text-ink-300 text-[13px]">
+        Add a connection first to run queries.
+      </div>
+    )
+  }
+  const conn = activeConn
   const needsConfirm = conn.tag === 'production' || conn.tag === 'staging'
 
   const run = () => {

@@ -216,7 +216,10 @@ const tables: Record<number, MockTable[]> = {
 }
 
 export function tablesFor(connID: number): MockTable[] {
-  return tables[connID] ?? []
+  // Real connection IDs from the backend won't collide with our 1/2/3 keys,
+  // so fall back to the canonical sample schema for any unknown id. Plan 7
+  // replaces this with real pg_catalog-driven introspection.
+  return tables[connID] ?? tables[1] ?? []
 }
 
 export function findTable(connID: number, schema: string, name: string): MockTable | undefined {
