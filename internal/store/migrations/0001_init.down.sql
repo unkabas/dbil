@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS idx_audit_ts;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS users;
