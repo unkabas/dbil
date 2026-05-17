@@ -46,13 +46,14 @@ func serveCmd() *cobra.Command {
 				return fmt.Errorf("serve: apply migrations: %w", err)
 			}
 
+			auditRepo := store.NewAuditRepo(db, mk)
 			authDeps := auth.Deps{
 				Users:    store.NewUsersRepo(db),
 				Sessions: store.NewSessionsRepo(db),
-				Audit:    store.NewAuditRepo(db, mk),
+				Audit:    auditRepo,
 			}
 			conns := store.NewConnectionsRepo(db, mk)
-			mgr := postgres.NewManager(postgres.NewPGX(), conns)
+			mgr := postgres.NewManager(postgres.NewPGX(), conns, auditRepo)
 
 			handler := handlers.Mount(handlers.Deps{
 				Auth:    authDeps,

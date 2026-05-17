@@ -3,7 +3,10 @@
 // future engines; the production implementation is NewPGX().
 package postgres
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Conn is the connection material needed to dial a PostgreSQL instance.
 // Always built from store.ConnectionsRepo.Reveal; never persisted.
@@ -25,11 +28,27 @@ type Probe struct {
 	HasPgStatStatements bool
 }
 
-// Pool is the minimal surface Plan 3 needs. Plan 4 extends this with Query
-// and Exec so the query executor mounts on top.
+// ColumnDef describes one column in a query Result.
+type ColumnDef struct {
+	Name     string
+	TypeName string // pgtype name when known (e.g. "int4", "text"); empty otherwise.
+}
+
+// Result is the engine-neutral shape returned by Pool.Execute.
+type Result struct {
+	Columns      []ColumnDef
+	Rows         [][]any
+	RowsAffected int64
+	CommandTag   string
+	Duration     time.Duration
+	Truncated    bool
+}
+
+// Pool is the minimal surface DBil needs from a Postgres connection pool.
 type Pool interface {
 	Ping(ctx context.Context) error
 	Close()
+	Execute(ctx context.Context, sql string) (*Result, error)
 }
 
 // Driver opens, probes, and closes pools.
