@@ -48,7 +48,7 @@ A single binary supports both **solo** and **team** modes through one authentica
 - **Charts:** uPlot (≈40KB, fast on large time series).
 - **Diagram:** React Flow.
 - **HTTP routing:** `chi` for REST; `coder/websocket` for live observability streams.
-- **State store:** SQLCipher (AES-256). Migrations via `golang-migrate`. Generated query code via `sqlc`.
+- **State store:** `modernc.org/sqlite` (pure Go, no CGO) with **application-layer envelope encryption** of sensitive columns (credentials, audit details). The DB file itself is not encrypted at filesystem level; field-level AES-256-GCM via the MK→DEK envelope provides the at-rest protection. This trades file-level encryption (SQLCipher would have required CGO and broken clean cross-compilation to linux/arm64) for a clean static binary, while keeping the same effective threat model — leaking the DB file without the MK yields ciphertext for every sensitive value. Migrations via `golang-migrate`. Generated query code via `sqlc`.
 - **Build:** Multi-arch Docker images for linux/amd64 and linux/arm64. Optional cosign-signed images.
 
 ## 5. Architecture
@@ -152,7 +152,7 @@ A single binary supports both **solo** and **team** modes through one authentica
 | Threat | Defense | Location |
 |---|---|---|
 | Leaked host env vars (`ps`, `/proc`, debugger) | MK not in env by default; env is last resort with warning log | Crypto Layer |
-| Leaked `dbil-data` volume (backup/snapshot) | SQLCipher AES-256 keyed via HKDF from MK; useless without MK | State Store |
+| Leaked `dbil-data` volume (backup/snapshot) | All sensitive columns (credentials, audit details) AES-256-GCM encrypted at the field level via the MK→DEK envelope; leaked file yields ciphertext for sensitive values | State Store |
 | Leaked SQLite file plus leaked MK | Per-connection passphrase for `production`-tagged connections; credentials remain unreadable | Crypto Layer + Connection Manager |
 | Host root compromised | Out of scope; KMS-backed MK reduces blast radius | KMS opt-in |
 | Insider with container access | Per-connection passphrase, audit to external syslog, secure-erase on credential deletion | Crypto + Audit |
@@ -170,8 +170,7 @@ A single binary supports both **solo** and **team** modes through one authentica
 ### 6.2 Crypto specifics
 
 - **Master Key (MK):** 32 random bytes from `crypto/rand`, base64url for display.
-- **SQLCipher key:** `HKDF-SHA256(MK, info="dbil:sqlite-v1")` → 32 bytes.
-- **DEK wrap key:** `HKDF-SHA256(MK, info="dbil:dek-wrap-v1")` → 32 bytes.
+- **DEK wrap key:** `HKDF-SHA256(MK, info="dbil:dek-wrap-v1")` → 32 bytes. (Previously also a SQLite-file key was derived; with field-level encryption replacing file-level, only the wrap key is needed.)
 - **DEK storage:** `AES-256-GCM(wrap_key, DEK, nonce, aad="conn:"+conn_id)`.
 - **Credentials encryption:** `AES-256-GCM(DEK, plaintext, nonce, aad="creds:"+conn_id+":"+version)`. Plaintext fields include hostname, port, database, username, password, ssh key, ssl cert.
 - **Per-connection passphrase wrapping** (for `production`): user enters in UI; `argon2id(passphrase, conn_salt, m=64MB, t=3, p=4)` → 32-byte key; additional `AES-256-GCM` wrap applied on top of the DEK ciphertext. Passphrase-derived key lives only in process memory, bound to the session, dropped on logout or TTL expiry.
