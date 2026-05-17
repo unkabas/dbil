@@ -51,6 +51,7 @@ func Mount(d Deps) chi.Router {
 		p.Get("/api/connections/{id}", GetConnection(d))
 		p.Delete("/api/connections/{id}", DeleteConnection(d))
 		p.Post("/api/connections/{id}/test", TestConnection(d))
+		p.Post("/api/connections/{id}/query", QueryHandler(d))
 	})
 
 	return r
