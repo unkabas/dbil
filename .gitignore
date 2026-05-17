@@ -22,3 +22,8 @@ initial-credentials.txt
 .DS_Store
 Thumbs.db
 *.swp
+
+# Frontend
+/web/node_modules/
+/web/dist/*
+!/web/dist/.gitkeep
