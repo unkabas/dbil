@@ -40,6 +40,7 @@ func main() {
 	}
 	root.AddCommand(versionCmd())
 	root.AddCommand(initCmd())
+	root.AddCommand(serveCmd())
 
 	if err := root.ExecuteContext(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)

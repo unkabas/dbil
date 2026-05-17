@@ -46,7 +46,7 @@ func RunInit(ctx context.Context, cfg config.DBilConfig) (InitResult, error) {
 		return InitResult{}, fmt.Errorf("bootstrap: mkdir data dir: %w", err)
 	}
 
-	mk, src, err := loadMasterKey(ctx, cfg)
+	mk, src, err := LoadMasterKey(ctx, cfg)
 	if err != nil {
 		return InitResult{}, fmt.Errorf("bootstrap: load master key: %w", err)
 	}
@@ -123,9 +123,10 @@ func RunInit(ctx context.Context, cfg config.DBilConfig) (InitResult, error) {
 	return res, nil
 }
 
-// loadMasterKey builds and runs the full loader chain in the documented
-// order: KMS, Keychain, File, Env, TTY, Auto.
-func loadMasterKey(ctx context.Context, cfg config.DBilConfig) (crypto.MasterKey, crypto.Source, error) {
+// LoadMasterKey builds and runs the full loader chain in the documented
+// order: KMS, Keychain, File, Env, TTY, Auto. Exposed so both `dbil init`
+// and `dbil serve` (and future commands) share the exact same source order.
+func LoadMasterKey(ctx context.Context, cfg config.DBilConfig) (crypto.MasterKey, crypto.Source, error) {
 	chain := crypto.NewChain(
 		crypto.NewKMSLoader(),
 		crypto.NewKeychainLoader(),
