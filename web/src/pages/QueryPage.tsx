@@ -6,8 +6,11 @@ import { EditorView } from '@codemirror/view'
 import { useShellContext } from '../shell/context'
 import { useExecuteQuery, type QueryResult } from '../api/connections'
 import { ApiError } from '../api/client'
-import { sampleSQL } from '../mock/data'
 import Icon from '../components/Icon'
+
+const sampleSQL = `-- Sample query — pick a real table from the schema sidebar
+SELECT 1 AS hello;
+`
 
 export default function QueryPage() {
   const { activeConn } = useShellContext()
