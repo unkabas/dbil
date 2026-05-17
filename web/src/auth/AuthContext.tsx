@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { ApiError, apiFetch, getStoredToken, setStoredToken } from '../api/client'
 
 export interface User {
   id: number
@@ -12,37 +13,73 @@ interface AuthState {
   user: User | null
   ready: boolean
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthCtx = createContext<AuthState | null>(null)
 
-// Mock mode: the frontend ships a fake admin@local session so the IDE can be
-// browsed without a backend. Real login wiring lives in a later phase of
-// Plan 5.
-const MOCK_USER: User = {
-  id: 1,
-  email: 'admin@local',
-  role: 'admin',
-  must_rotate: false,
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(MOCK_USER)
-  const [token] = useState<string | null>('mock-session')
+  const [token, setTokenState] = useState<string | null>(() => getStoredToken())
+  const [user, setUser] = useState<User | null>(null)
+  const [ready, setReady] = useState(false)
 
-  const login = async (email: string, _password: string) => {
-    setUser({ ...MOCK_USER, email })
+  const setToken = (t: string | null) => {
+    setStoredToken(t)
+    setTokenState(t)
   }
 
-  const logout = () => {
+  // On mount: if we have a stored token, validate it via /api/me.
+  useEffect(() => {
+    let cancelled = false
+    if (!token) {
+      setReady(true)
+      setUser(null)
+      return
+    }
+    apiFetch<User>('/api/me')
+      .then((u) => {
+        if (!cancelled) setUser(u)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        // Invalid / expired token: drop it.
+        if (err instanceof ApiError && err.status === 401) {
+          setToken(null)
+        }
+        setUser(null)
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  const login = async (email: string, password: string) => {
+    const r = await apiFetch<{ token: string; expires_at: number }>(
+      '/api/auth/login',
+      { unauthed: true, body: { email, password } },
+    )
+    setToken(r.token)
+    const me = await apiFetch<User>('/api/me')
+    setUser(me)
+  }
+
+  const logout = async () => {
+    if (token) {
+      try {
+        await apiFetch<void>('/api/auth/logout', { method: 'POST' })
+      } catch {
+        // Best-effort: even if logout call fails, drop client-side state.
+      }
+    }
+    setToken(null)
     setUser(null)
   }
 
   return (
-    <AuthCtx.Provider value={{ token, user, ready: true, login, logout }}>
-      {children}
-    </AuthCtx.Provider>
+    <AuthCtx.Provider value={{ token, user, ready, login, logout }}>{children}</AuthCtx.Provider>
   )
 }
 
