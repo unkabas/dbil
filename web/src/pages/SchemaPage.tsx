@@ -1,49 +1,79 @@
 import { useMemo, useState } from 'react'
-import { tablesFor, type MockTable } from '../mock/data'
 import { useShellContext } from '../shell/context'
+import { useSchema, type SchemaTable, type SchemaColumn } from '../api/schema'
+import { ApiError } from '../api/client'
 import Icon from '../components/Icon'
 
-// Centrepiece of the design: three-pane Schema screen with a real ER diagram.
-// Left  — filter + schema-grouped table list.
-// Center — pannable canvas with positioned table cards and SVG FK connectors;
-//          hovering or focusing a table highlights its relationship chain and
-//          dims the rest.
-// Right — detail pane: stats, columns, FK in/out, indexes, DDL preview.
-//
-// Schema data is still mock until Plan 7 ships real pg_catalog introspection.
+// Three-pane Schema screen.
+//   Left  — filter + schema-grouped table list.
+//   Center — auto-laid-out ER cards with SVG FK connectors.
+//   Right — focused-table detail pane: stats, columns, FK in/out, DDL preview.
+// Schema data comes from /api/connections/{id}/schema; positions are
+// computed locally (3-column grid).
 
 const TABLE_W = 280
 const ROW_H = 26
 const HEADER_H = 46
+const COL_GAP = 60
+const ROW_GAP = 80
+const CANVAS_PAD = 60
+const COLS = 3
+
+interface PositionedTable extends SchemaTable {
+  pos: { x: number; y: number }
+}
 
 export default function SchemaPage() {
   const { activeConnID, activeConn } = useShellContext()
-  const tables = tablesFor(activeConnID)
-  const [focused, setFocused] = useState<string | null>(() => tables[0] ? keyOf(tables[0]) : null)
+  const { data, isLoading, error } = useSchema(activeConnID)
+
+  const positioned = useMemo<PositionedTable[]>(() => {
+    if (!data) return []
+    const flat: SchemaTable[] = []
+    for (const s of data.schemas) flat.push(...s.tables)
+    return flat.map((t, i) => {
+      const col = i % COLS
+      const row = Math.floor(i / COLS)
+      const cardH = HEADER_H + Math.max(1, t.columns.length) * ROW_H
+      return {
+        ...t,
+        pos: {
+          x: CANVAS_PAD + col * (TABLE_W + COL_GAP),
+          y: CANVAS_PAD + row * (cardH > 200 ? cardH + ROW_GAP / 2 : 220 + ROW_GAP),
+        },
+      }
+    })
+  }, [data])
+
+  const [focused, setFocused] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
   const [zoom, setZoom] = useState(1)
 
+  const focusedKey = focused ?? (positioned[0] ? keyOf(positioned[0]) : null)
+
   const filtered = useMemo(() => {
-    if (!filter.trim()) return tables
+    if (!filter.trim()) return positioned
     const f = filter.toLowerCase()
-    return tables.filter(
+    return positioned.filter(
       (t) =>
         t.name.toLowerCase().includes(f) ||
         t.schema.toLowerCase().includes(f) ||
         t.columns.some((c) => c.name.toLowerCase().includes(f)),
     )
-  }, [tables, filter])
+  }, [positioned, filter])
 
-  const focusedTable = useMemo(() => tables.find((t) => keyOf(t) === focused), [focused, tables])
+  const focusedTable = useMemo(
+    () => positioned.find((t) => keyOf(t) === focusedKey),
+    [focusedKey, positioned],
+  )
 
-  // FK edges
   const edges = useMemo(() => {
     const out: Array<{ fromKey: string; fromCol: string; toKey: string; toCol: string }> = []
-    for (const t of tables) {
+    for (const t of positioned) {
       for (const c of t.columns) {
         if (!c.fk) continue
-        const target = tables.find((x) => x.name === c.fk!.table)
+        const target = positioned.find((x) => x.name === c.fk!.table)
         if (!target) continue
         out.push({
           fromKey: keyOf(t),
@@ -54,10 +84,10 @@ export default function SchemaPage() {
       }
     }
     return out
-  }, [tables])
+  }, [positioned])
 
   const highlightSet = useMemo(() => {
-    const target = hovered ?? focused
+    const target = hovered ?? focusedKey
     if (!target) return null
     const set = new Set([target])
     for (const e of edges) {
@@ -65,11 +95,16 @@ export default function SchemaPage() {
       if (e.toKey === target) set.add(e.fromKey)
     }
     return set
-  }, [hovered, focused, edges])
+  }, [hovered, focusedKey, edges])
 
-  const totalRows = tables.reduce((a, t) => a + t.rows, 0)
-  const totalCols = tables.reduce((a, t) => a + t.columns.length, 0)
+  const totalRows = positioned.reduce((a, t) => a + t.rows, 0)
+  const totalCols = positioned.reduce((a, t) => a + t.columns.length, 0)
   const schemas = uniqueSchemas(filtered)
+
+  const canvasH = Math.max(
+    640,
+    CANVAS_PAD * 2 + Math.ceil(positioned.length / COLS) * (220 + ROW_GAP),
+  )
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 320px', height: '100%', minHeight: 0 }}>
@@ -97,10 +132,8 @@ export default function SchemaPage() {
               Tables
             </span>
             <span className="mono tnum" style={{ fontSize: 10.5, color: 'var(--fg-4)' }}>
-              {tables.length}
+              {positioned.length}
             </span>
-            <span style={{ flex: 1 }} />
-            <button className="link-btn" title="New table"><Icon name="plus" size={13} /></button>
           </div>
           <div style={{ position: 'relative' }}>
             <Icon
@@ -128,6 +161,10 @@ export default function SchemaPage() {
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: '0 8px 12px' }}>
+          {isLoading && positioned.length === 0 && (
+            <div style={{ padding: 14, color: 'var(--fg-3)', fontSize: 12 }}>Loading schema…</div>
+          )}
+          {error && <SidebarError err={error} />}
           {schemas.map((sch) => {
             const list = filtered.filter((t) => t.schema === sch)
             if (list.length === 0) return null
@@ -152,7 +189,7 @@ export default function SchemaPage() {
                 </div>
                 {list.map((t) => {
                   const key = keyOf(t)
-                  const isFocused = focused === key
+                  const isFocused = focusedKey === key
                   return (
                     <button
                       key={key}
@@ -213,14 +250,13 @@ export default function SchemaPage() {
           </button>
           <span style={{ flex: 1 }} />
           <span className="mono tnum" style={{ color: 'var(--fg-4)' }}>
-            mock schema
+            pg_catalog
           </span>
         </div>
       </div>
 
       {/* ── Center: ER canvas ─────────────────────────────────────── */}
       <div className="app-bg" style={{ position: 'relative', overflow: 'auto', background: 'var(--bg-0)' }}>
-        {/* Grid backdrop */}
         <div
           aria-hidden
           style={{
@@ -233,7 +269,6 @@ export default function SchemaPage() {
           }}
         />
 
-        {/* Toolbar */}
         <div
           style={{
             position: 'sticky',
@@ -252,12 +287,10 @@ export default function SchemaPage() {
           </h1>
           <span style={{ fontSize: 12, color: 'var(--fg-4)' }}>·</span>
           <span className="tnum" style={{ fontSize: 12, color: 'var(--fg-3)' }}>
-            {activeConn?.alias ?? '—'} · {tables.length} tables · {totalCols} columns ·{' '}
+            {activeConn?.alias ?? '—'} · {positioned.length} tables · {totalCols} columns ·{' '}
             {fmtCount(totalRows)} rows
           </span>
           <span style={{ flex: 1 }} />
-          <button className="btn-gh"><Icon name="layers" size={13} /> Auto layout</button>
-          <button className="btn-gh"><Icon name="download" size={13} /> Export DDL</button>
           <div
             style={{
               display: 'flex',
@@ -298,24 +331,30 @@ export default function SchemaPage() {
           </div>
         </div>
 
-        {/* Canvas */}
+        {error && <CanvasError err={error} />}
+        {!error && positioned.length === 0 && !isLoading && (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--fg-3)', fontSize: 13 }}>
+            No user-visible tables in this database yet.
+          </div>
+        )}
+
         <div
           style={{
             position: 'relative',
-            width: 1280,
-            height: 640,
+            width: CANVAS_PAD * 2 + COLS * TABLE_W + (COLS - 1) * COL_GAP,
+            height: canvasH,
             transform: `scale(${zoom})`,
             transformOrigin: '0 0',
             margin: '0 24px 24px',
           }}
         >
-          <ErEdges tables={tables} edges={edges} highlightSet={highlightSet} />
+          <ErEdges tables={positioned} edges={edges} highlightSet={highlightSet} />
 
-          {tables.map((t) => (
+          {positioned.map((t) => (
             <TableNode
               key={keyOf(t)}
               t={t}
-              focused={focused === keyOf(t)}
+              focused={focusedKey === keyOf(t)}
               dimmed={!!highlightSet && !highlightSet.has(keyOf(t))}
               highlighted={!!highlightSet?.has(keyOf(t))}
               onClick={() => setFocused(keyOf(t))}
@@ -340,11 +379,11 @@ export default function SchemaPage() {
   )
 }
 
-function keyOf(t: MockTable): string {
+function keyOf(t: SchemaTable): string {
   return `${t.schema}.${t.name}`
 }
 
-function uniqueSchemas(tables: MockTable[]): string[] {
+function uniqueSchemas(tables: SchemaTable[]): string[] {
   const seen = new Set<string>()
   const out: string[] = []
   for (const t of tables) {
@@ -362,18 +401,72 @@ function fmtCount(n: number): string {
   return String(n)
 }
 
+function fmtBytes(b: number): string {
+  if (b >= 1 << 30) return (b / (1 << 30)).toFixed(1) + ' GB'
+  if (b >= 1 << 20) return (b / (1 << 20)).toFixed(1) + ' MB'
+  if (b >= 1 << 10) return (b / (1 << 10)).toFixed(1) + ' KB'
+  return b + ' B'
+}
+
+function errMsg(err: unknown): string {
+  if (err instanceof ApiError) return err.body.reason || err.body.error || `HTTP ${err.status}`
+  if (err instanceof Error) return err.message
+  return String(err)
+}
+
+function SidebarError({ err }: { err: unknown }) {
+  return (
+    <div
+      className="mono"
+      style={{
+        margin: 10,
+        padding: 10,
+        borderRadius: 8,
+        background: 'var(--danger-soft)',
+        border: '1px solid rgba(255,107,122,0.3)',
+        color: 'var(--danger)',
+        fontSize: 11.5,
+        whiteSpace: 'pre-wrap',
+      }}
+    >
+      {errMsg(err)}
+    </div>
+  )
+}
+
+function CanvasError({ err }: { err: unknown }) {
+  return (
+    <div
+      className="mono"
+      style={{
+        margin: '12px 24px',
+        padding: 14,
+        borderRadius: 8,
+        background: 'var(--danger-soft)',
+        border: '1px solid rgba(255,107,122,0.3)',
+        color: 'var(--danger)',
+        fontSize: 12,
+      }}
+    >
+      schema fetch failed: {errMsg(err)}
+    </div>
+  )
+}
+
 // ── ER edges (SVG path between table cards) ──────────────────────
 function ErEdges({
   tables,
   edges,
   highlightSet,
 }: {
-  tables: MockTable[]
+  tables: PositionedTable[]
   edges: Array<{ fromKey: string; fromCol: string; toKey: string; toCol: string }>
   highlightSet: Set<string> | null
 }) {
+  const w = CANVAS_PAD * 2 + COLS * TABLE_W + (COLS - 1) * COL_GAP
+  const h = Math.max(640, CANVAS_PAD * 2 + Math.ceil(tables.length / COLS) * (220 + ROW_GAP))
   return (
-    <svg width={1280} height={640} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <svg width={w} height={h} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <defs>
         <marker id="arrow-soft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M0,0 L10,5 L0,10 z" fill="var(--fg-4)" />
@@ -385,7 +478,7 @@ function ErEdges({
       {edges.map((e, i) => {
         const from = tables.find((t) => keyOf(t) === e.fromKey)
         const to = tables.find((t) => keyOf(t) === e.toKey)
-        if (!from?.pos || !to?.pos) return null
+        if (!from || !to) return null
         const hot = !!highlightSet && highlightSet.has(e.fromKey) && highlightSet.has(e.toKey)
         const dim = !!highlightSet && !hot
 
@@ -422,7 +515,6 @@ function ErEdges({
   )
 }
 
-// ── Positioned table card on the ER canvas ───────────────────────
 function TableNode({
   t,
   focused,
@@ -432,7 +524,7 @@ function TableNode({
   onMouseEnter,
   onMouseLeave,
 }: {
-  t: MockTable
+  t: PositionedTable
   focused: boolean
   dimmed: boolean
   highlighted: boolean
@@ -440,7 +532,6 @@ function TableNode({
   onMouseEnter(): void
   onMouseLeave(): void
 }) {
-  const pos = t.pos ?? { x: 0, y: 0 }
   return (
     <div
       onClick={onClick}
@@ -448,8 +539,8 @@ function TableNode({
       onMouseLeave={onMouseLeave}
       style={{
         position: 'absolute',
-        left: pos.x,
-        top: pos.y,
+        left: t.pos.x,
+        top: t.pos.y,
         width: TABLE_W,
         background: 'var(--bg-1)',
         border: '1px solid ' + (focused ? 'var(--accent)' : highlighted ? 'var(--line-3)' : 'var(--line-1)'),
@@ -548,12 +639,11 @@ function TableNode({
   )
 }
 
-// ── Right-pane: focused-table detail ─────────────────────────────
 function TableDetail({
   t,
   edges,
 }: {
-  t: MockTable
+  t: SchemaTable
   edges: Array<{ fromKey: string; fromCol: string; toKey: string; toCol: string }>
 }) {
   const me = keyOf(t)
@@ -591,18 +681,19 @@ function TableDetail({
         </h2>
         <div style={{ display: 'flex', gap: 18, marginTop: 12 }}>
           <Stat label="Rows" value={t.rows.toLocaleString('en-US')} />
-          <Stat label="Size" value={t.size ?? '—'} />
+          <Stat label="Size" value={fmtBytes(t.size_bytes)} />
           <Stat label="Columns" value={String(t.columns.length)} />
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
-          <button className="btn-pri" style={{ flex: 1 }}>
+          <a
+            className="btn-pri"
+            style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}
+            href={`/data/${t.schema}/${t.name}`}
+          >
             <Icon name="data" size={12} /> Browse data
-          </button>
+          </a>
           <button className="btn-gh" title="Copy CREATE">
             <Icon name="copy" size={12} />
-          </button>
-          <button className="btn-gh" title="Edit DDL">
-            <Icon name="edit" size={12} />
           </button>
         </div>
       </div>
@@ -758,9 +849,9 @@ function FkRow({ dir, leftCol, rightCol }: { dir: 'in' | 'out'; leftCol: string;
   )
 }
 
-function buildDDL(t: MockTable): string {
+function buildDDL(t: SchemaTable): string {
   const cols = t.columns
-    .map((c) => {
+    .map((c: SchemaColumn) => {
       const parts = [
         `  <span class="id">${pad(c.name, 16)}</span>`,
         `<span class="kw">${c.type}</span>`,
