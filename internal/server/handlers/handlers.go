@@ -54,6 +54,14 @@ func Mount(d Deps) chi.Router {
 		p.Post("/api/connections/{id}/query", QueryHandler(d))
 	})
 
+	// --- Static SPA (embedded React bundle) ---
+	// chi's NotFound and MethodNotAllowed catch anything the router above
+	// didn't match. SPAHandler rejects /api/* and /healthz with a JSON 404 so
+	// API misses don't return HTML; everything else falls back to index.html
+	// so client-side React Router routes survive reloads.
+	r.NotFound(SPAHandler().ServeHTTP)
+	r.MethodNotAllowed(SPAHandler().ServeHTTP)
+
 	return r
 }
 
