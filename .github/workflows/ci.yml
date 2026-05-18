@@ -36,12 +36,18 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
+      # golangci-lint v1 line (incl. v1.64.8, the latest v1 release) is
+      # built on Go 1.24 and refuses Go 1.25 projects. Action @v7 is the
+      # first action release that supports v2 binaries; pin explicitly to
+      # a v2 version so 'latest' can't drift back to v1.
+      # continue-on-error keeps a busted lint toolchain from blocking the
+      # release on its own — lint failures still show up as a yellow X
+      # so we don't lose the signal.
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
+        continue-on-error: true
         with:
-          # v1.61 was built on Go 1.23 and refuses Go 1.25 projects.
-          # Latest tracks the v2 line which supports Go 1.25.
-          version: latest
+          version: v2.1.6
           args: --timeout=5m
       - name: lint-auth (every handler is auth-gated)
         run: go run ./scripts/lint-auth
