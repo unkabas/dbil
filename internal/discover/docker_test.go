@@ -5,27 +5,26 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
+	"github.com/unkabas/dbil/internal/dockerapi"
 )
 
 type fakeLister struct {
-	list    []container.Summary
-	inspect map[string]container.InspectResponse
+	list    []dockerapi.Summary
+	inspect map[string]dockerapi.Inspect
 	err     error
 }
 
-func (f *fakeLister) ContainerList(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
+func (f *fakeLister) ContainerList(_ context.Context) ([]dockerapi.Summary, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
 	return f.list, nil
 }
 
-func (f *fakeLister) ContainerInspect(_ context.Context, id string) (container.InspectResponse, error) {
+func (f *fakeLister) ContainerInspect(_ context.Context, id string) (dockerapi.Inspect, error) {
 	r, ok := f.inspect[id]
 	if !ok {
-		return container.InspectResponse{}, errors.New("not found")
+		return dockerapi.Inspect{}, errors.New("not found")
 	}
 	return r, nil
 }
@@ -39,21 +38,21 @@ func TestDockerScanner_HappyPath(t *testing.T) {
 		LabelPasswordEnv: "POSTGRES_PASSWORD",
 		LabelDatabaseEnv: "POSTGRES_DB",
 	}
-	c := container.Summary{
+	c := dockerapi.Summary{
 		ID:     "abc1234567890def",
 		Names:  []string{"/postgres"},
 		Labels: labels,
-		NetworkSettings: &container.NetworkSettingsSummary{
-			Networks: map[string]*network.EndpointSettings{"appnet": {IPAddress: "172.0.0.2"}},
+		NetworkSettings: &dockerapi.NetworkSettingsSummary{
+			Networks: map[string]*dockerapi.EndpointSettings{"appnet": {IPAddress: "172.0.0.2"}},
 		},
 	}
-	insp := container.InspectResponse{
-		Config: &container.Config{
+	insp := dockerapi.Inspect{
+		Config: &dockerapi.Config{
 			Env: []string{"POSTGRES_USER=app", "POSTGRES_PASSWORD=s3cret", "POSTGRES_DB=appdb"},
 		},
 	}
 	s := &DockerScanner{
-		Client:  &fakeLister{list: []container.Summary{c}, inspect: map[string]container.InspectResponse{c.ID: insp}},
+		Client:  &fakeLister{list: []dockerapi.Summary{c}, inspect: map[string]dockerapi.Inspect{c.ID: insp}},
 		Network: "appnet",
 	}
 	out, err := s.Scan(context.Background())
@@ -76,8 +75,8 @@ func TestDockerScanner_HappyPath(t *testing.T) {
 }
 
 func TestDockerScanner_SkipsDisabled(t *testing.T) {
-	c := container.Summary{ID: "x", Names: []string{"/p"}, Labels: map[string]string{}}
-	s := &DockerScanner{Client: &fakeLister{list: []container.Summary{c}}}
+	c := dockerapi.Summary{ID: "x", Names: []string{"/p"}, Labels: map[string]string{}}
+	s := &DockerScanner{Client: &fakeLister{list: []dockerapi.Summary{c}}}
 	out, err := s.Scan(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -88,16 +87,16 @@ func TestDockerScanner_SkipsDisabled(t *testing.T) {
 }
 
 func TestDockerScanner_SkipsWrongNetwork(t *testing.T) {
-	c := container.Summary{
+	c := dockerapi.Summary{
 		ID:     "x",
 		Names:  []string{"/p"},
 		Labels: map[string]string{LabelEnable: "true"},
-		NetworkSettings: &container.NetworkSettingsSummary{
-			Networks: map[string]*network.EndpointSettings{"bridge": {}},
+		NetworkSettings: &dockerapi.NetworkSettingsSummary{
+			Networks: map[string]*dockerapi.EndpointSettings{"bridge": {}},
 		},
 	}
 	s := &DockerScanner{
-		Client:  &fakeLister{list: []container.Summary{c}},
+		Client:  &fakeLister{list: []dockerapi.Summary{c}},
 		Network: "appnet",
 	}
 	out, _ := s.Scan(context.Background())
@@ -112,17 +111,17 @@ func TestDockerScanner_SkipsMissingEnv(t *testing.T) {
 		LabelUsernameEnv: "POSTGRES_USER",
 		LabelDatabaseEnv: "POSTGRES_DB",
 	}
-	c := container.Summary{
+	c := dockerapi.Summary{
 		ID:     "x",
 		Names:  []string{"/p"},
 		Labels: labels,
 	}
-	insp := container.InspectResponse{
-		Config: &container.Config{Env: []string{"POSTGRES_DB=appdb"}},
+	insp := dockerapi.Inspect{
+		Config: &dockerapi.Config{Env: []string{"POSTGRES_DB=appdb"}},
 	}
 	s := &DockerScanner{Client: &fakeLister{
-		list:    []container.Summary{c},
-		inspect: map[string]container.InspectResponse{c.ID: insp},
+		list:    []dockerapi.Summary{c},
+		inspect: map[string]dockerapi.Inspect{c.ID: insp},
 	}}
 	out, err := s.Scan(context.Background())
 	if err != nil {
@@ -140,11 +139,11 @@ func TestDockerScanner_InvalidPortRejected(t *testing.T) {
 		LabelUsernameEnv: "U",
 		LabelDatabaseEnv: "D",
 	}
-	c := container.Summary{ID: "x", Names: []string{"/p"}, Labels: labels}
-	insp := container.InspectResponse{Config: &container.Config{Env: []string{"U=u", "D=d"}}}
+	c := dockerapi.Summary{ID: "x", Names: []string{"/p"}, Labels: labels}
+	insp := dockerapi.Inspect{Config: &dockerapi.Config{Env: []string{"U=u", "D=d"}}}
 	s := &DockerScanner{Client: &fakeLister{
-		list:    []container.Summary{c},
-		inspect: map[string]container.InspectResponse{c.ID: insp},
+		list:    []dockerapi.Summary{c},
+		inspect: map[string]dockerapi.Inspect{c.ID: insp},
 	}}
 	out, _ := s.Scan(context.Background())
 	if len(out) != 0 {
@@ -158,11 +157,11 @@ func TestDockerScanner_PasswordOptional(t *testing.T) {
 		LabelUsernameEnv: "U",
 		LabelDatabaseEnv: "D",
 	}
-	c := container.Summary{ID: "x", Names: []string{"/p"}, Labels: labels}
-	insp := container.InspectResponse{Config: &container.Config{Env: []string{"U=u", "D=d"}}}
+	c := dockerapi.Summary{ID: "x", Names: []string{"/p"}, Labels: labels}
+	insp := dockerapi.Inspect{Config: &dockerapi.Config{Env: []string{"U=u", "D=d"}}}
 	s := &DockerScanner{Client: &fakeLister{
-		list:    []container.Summary{c},
-		inspect: map[string]container.InspectResponse{c.ID: insp},
+		list:    []dockerapi.Summary{c},
+		inspect: map[string]dockerapi.Inspect{c.ID: insp},
 	}}
 	out, err := s.Scan(context.Background())
 	if err != nil {

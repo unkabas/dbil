@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 
 	"github.com/unkabas/dbil/internal/auth"
 	"github.com/unkabas/dbil/internal/bootstrap"
 	"github.com/unkabas/dbil/internal/config"
 	"github.com/unkabas/dbil/internal/discover"
+	"github.com/unkabas/dbil/internal/dockerapi"
 	"github.com/unkabas/dbil/internal/observ"
 	"github.com/unkabas/dbil/internal/policy"
 	"github.com/unkabas/dbil/internal/postgres"
@@ -140,7 +140,7 @@ func buildDiscoverManager(repo *store.DiscoveredRepo, audit *store.AuditRepo) *d
 	}
 
 	if mode == discover.ModeDocker || mode == discover.ModeBoth {
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := dockerapi.NewClientFromEnv()
 		if err != nil {
 			slog.Warn("discover: docker client unavailable, running env-only",
 				"err", err.Error(),

@@ -7,14 +7,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/unkabas/dbil/internal/dockerapi"
 )
 
 // dockerLister is the minimal slice of the Docker client used by DockerScanner.
 // Keeping this small lets tests provide a fake without spinning up dockerd.
+// Implementations: dockerapi.Client (production) and the test fake in
+// docker_test.go.
 type dockerLister interface {
-	ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
-	ContainerInspect(ctx context.Context, id string) (container.InspectResponse, error)
+	ContainerList(ctx context.Context) ([]dockerapi.Summary, error)
+	ContainerInspect(ctx context.Context, id string) (dockerapi.Inspect, error)
 }
 
 // Labels recognised on Postgres-bearing containers. All under the `dbil.`
@@ -41,7 +43,7 @@ type DockerScanner struct {
 // Skipped containers are logged at debug level with a reason; never errored
 // on so a single misconfigured container can't poison the whole scan.
 func (s *DockerScanner) Scan(ctx context.Context) ([]Entry, error) {
-	list, err := s.Client.ContainerList(ctx, container.ListOptions{})
+	list, err := s.Client.ContainerList(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("docker list: %w", err)
 	}
@@ -69,14 +71,14 @@ func (s *DockerScanner) Scan(ctx context.Context) ([]Entry, error) {
 	return out, nil
 }
 
-func (s *DockerScanner) skip(c container.Summary, reason string) {
+func (s *DockerScanner) skip(c dockerapi.Summary, reason string) {
 	if s.Log == nil {
 		return
 	}
 	s.Log.Debug("discover.skip", "container_id", c.ID, "labels_alias", c.Labels[LabelAlias], "reason", reason)
 }
 
-func attachedTo(c container.Summary, network string) bool {
+func attachedTo(c dockerapi.Summary, network string) bool {
 	if c.NetworkSettings == nil {
 		return false
 	}
@@ -84,7 +86,7 @@ func attachedTo(c container.Summary, network string) bool {
 	return ok
 }
 
-func (s *DockerScanner) buildEntry(c container.Summary, insp container.InspectResponse) (Entry, error) {
+func (s *DockerScanner) buildEntry(c dockerapi.Summary, insp dockerapi.Inspect) (Entry, error) {
 	if insp.Config == nil {
 		return Entry{}, fmt.Errorf("inspect returned no config")
 	}
@@ -156,7 +158,7 @@ func (s *DockerScanner) buildEntry(c container.Summary, insp container.InspectRe
 
 // resolveHost prefers DNS-style names (works on user-defined networks);
 // falls back to the IP address on the chosen network.
-func resolveHost(c container.Summary, insp container.InspectResponse, network string) string {
+func resolveHost(c dockerapi.Summary, insp dockerapi.Inspect, network string) string {
 	name := primaryName(c)
 	if network != "" && c.NetworkSettings != nil {
 		if ep, ok := c.NetworkSettings.Networks[network]; ok && ep != nil {
@@ -180,7 +182,7 @@ func resolveHost(c container.Summary, insp container.InspectResponse, network st
 
 // primaryName returns the container's first registered name, with the
 // leading "/" stripped that Docker prepends.
-func primaryName(c container.Summary) string {
+func primaryName(c dockerapi.Summary) string {
 	if len(c.Names) == 0 {
 		return ""
 	}
