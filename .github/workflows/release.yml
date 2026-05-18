@@ -93,11 +93,37 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=tag
-            type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
+      # Build linux/amd64 locally first so we can inspect the real
+      # uncompressed image size. `docker manifest inspect` returns the
+      # *manifest* descriptor size (a few KB), not the image size — using
+      # it as a guard would silently pass every build.
+      - name: Build single-arch for size check
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: dbil:size-check
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+
+      - name: Verify image size
+        run: |
+          SIZE=$(docker image inspect dbil:size-check --format '{{.Size}}')
+          MB=$((SIZE/1024/1024))
+          echo "dbil:size-check = ${SIZE} bytes (${MB} MB)"
+          MAX=$((30 * 1024 * 1024))
+          if [ "$SIZE" -gt "$MAX" ]; then
+            echo "FAIL: image > 30 MB ceiling"
+            exit 1
+          fi
+
       - id: push
-        name: Build and push
+        name: Build and push multi-arch
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -108,17 +134,6 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             COMMIT=${{ github.sha }}
-
-      - name: Verify image size
-        run: |
-          SIZE=$(docker manifest inspect ${{ env.IMAGE_NAME }}:${{ github.ref_name }} \
-            | jq '[.manifests[0].size, .manifests[1].size] | max')
-          echo "max-arch image size: ${SIZE} bytes"
-          MAX=$((30 * 1024 * 1024))
-          if [ "$SIZE" -gt "$MAX" ]; then
-            echo "Image size $SIZE > $MAX (30 MB ceiling)"
-            exit 1
-          fi
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
