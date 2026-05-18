@@ -4,13 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 
+	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 
 	"github.com/unkabas/dbil/internal/auth"
 	"github.com/unkabas/dbil/internal/bootstrap"
 	"github.com/unkabas/dbil/internal/config"
+	"github.com/unkabas/dbil/internal/discover"
 	"github.com/unkabas/dbil/internal/observ"
 	"github.com/unkabas/dbil/internal/policy"
 	"github.com/unkabas/dbil/internal/postgres"
@@ -57,6 +60,7 @@ func serveCmd() *cobra.Command {
 			conns := store.NewConnectionsRepo(db, mk)
 			pgxMgr := postgres.NewManager(postgres.NewPGX(), conns, auditRepo)
 			observRepo := store.NewObservabilityRepo(db)
+			discoveredRepo := store.NewDiscoveredRepo(db, mk)
 
 			observMgr := observ.NewManager(
 				observRepo,
@@ -66,10 +70,6 @@ func serveCmd() *cobra.Command {
 				observ.DefaultFactory,
 			)
 
-			// Start collectors for every already-registered connection that
-			// doesn't require a session passphrase. Passphrase-protected
-			// connections start their collectors lazily (Plan 6.1 will wire
-			// an explicit start endpoint).
 			existing, err := conns.List(ctx)
 			if err != nil {
 				slog.Warn("serve: listing existing connections failed", "err", err)
@@ -83,13 +83,19 @@ func serveCmd() *cobra.Command {
 				observMgr.Start(c.ID, policy.PolicyFor(c.Tag).PollInterval)
 			}
 
+			dscMgr := buildDiscoverManager(discoveredRepo, auditRepo)
+			if dscMgr != nil {
+				dscMgr.Start()
+			}
+
 			handler := handlers.Mount(handlers.Deps{
-				Auth:      authDeps,
-				Conns:     conns,
-				Manager:   pgxMgr,
-				Observ:    observRepo,
-				ObservMgr: observMgr,
-				Version:   version,
+				Auth:       authDeps,
+				Conns:      conns,
+				Manager:    pgxMgr,
+				Observ:     observRepo,
+				ObservMgr:  observMgr,
+				Discovered: discoveredRepo,
+				Version:    version,
 			})
 			addr := fmt.Sprintf(":%d", cfg.Port)
 			srv := server.New(addr, handler)
@@ -97,6 +103,9 @@ func serveCmd() *cobra.Command {
 			go func() {
 				<-ctx.Done()
 				slog.Info("shutdown requested; draining in-flight requests")
+				if dscMgr != nil {
+					dscMgr.Shutdown()
+				}
 				observMgr.Shutdown()
 				pgxMgr.Shutdown()
 				_ = srv.Shutdown(context.Background())
@@ -106,4 +115,41 @@ func serveCmd() *cobra.Command {
 			return srv.Start()
 		},
 	}
+}
+
+// buildDiscoverManager wires the discover.Manager according to env vars.
+// Returns nil when DBIL_DISCOVER is empty or unset (the no-discovery default).
+// Docker socket failures degrade gracefully — the manager still runs with
+// any env-mode scanners wired in.
+func buildDiscoverManager(repo *store.DiscoveredRepo, audit *store.AuditRepo) *discover.Manager {
+	mode := discover.Mode(os.Getenv("DBIL_DISCOVER"))
+	if mode == discover.ModeOff {
+		return nil
+	}
+	autoJSON := os.Getenv("DBIL_AUTO_CONNECT")
+	network := os.Getenv("DBIL_NETWORK")
+
+	m, err := discover.NewManager(discover.Config{
+		Mode:            mode,
+		AutoConnectJSON: autoJSON,
+		Network:         network,
+	}, repo, audit, slog.Default())
+	if err != nil {
+		slog.Warn("discover: manager init failed", "err", err)
+		return nil
+	}
+
+	if mode == discover.ModeDocker || mode == discover.ModeBoth {
+		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		if err != nil {
+			slog.Warn("discover: docker client unavailable, running env-only",
+				"err", err.Error(),
+				"hint", "mount /var/run/docker.sock or unset DBIL_DISCOVER=docker")
+		} else {
+			m.AddDockerScanner(cli, network)
+			slog.Info("discover: docker scanner enabled", "network", network)
+		}
+	}
+	slog.Info("discover: started", "mode", string(mode), "network", network)
+	return m
 }
