@@ -1,12 +1,24 @@
-# dbil
+<p align="center">
+  <img src=".github/assets/logo.png" alt="dbil logo" width="180" />
+</p>
 
-A PostgreSQL workspace you can drop into a `docker-compose` project. It's
-one 20-megabyte container with the React UI baked in. Schema viewer,
-query editor, observability, all in there.
+<h1 align="center">dbil</h1>
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://github.com/unkabas/dbil/actions/workflows/ci.yml/badge.svg)](https://github.com/unkabas/dbil/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/unkabas/dbil?include_prereleases)](https://github.com/unkabas/dbil/releases)
+<p align="center">
+  A PostgreSQL workspace you can drop into a <code>docker-compose</code> project. It's
+  one 20-megabyte container with the React UI baked in. Schema viewer,
+  query editor, observability, all in there.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0" /></a>
+  <a href="https://github.com/unkabas/dbil/actions/workflows/ci.yml"><img src="https://github.com/unkabas/dbil/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/unkabas/dbil/releases"><img src="https://img.shields.io/github/v/release/unkabas/dbil?include_prereleases" alt="Release" /></a>
+</p>
+
+<p align="center">
+  <img src=".github/assets/anim.gif" alt="dbil demo" width="820" />
+</p>
 
 ---
 
