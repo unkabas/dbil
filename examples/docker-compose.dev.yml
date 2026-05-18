@@ -1,14 +1,26 @@
-# Minimal Plan 1 example: bring up DBil alone and run `dbil init`.
-# Once Plan 2 adds `dbil serve`, this file will gain a UI port and a
-# Postgres companion service.
+# Minimal dev compose: dbil alone, listens on :4242.
+#
+# Quick start:
+#   docker compose -f examples/docker-compose.dev.yml up
+#
+# On first run dbil generates a master key under ./dbil-data/master.key
+# (mode 0400) and writes the admin credentials to
+# ./dbil-data/initial-credentials.txt (0600). Open http://localhost:4242,
+# log in, rotate the password.
+#
+# To enable Level-2 auto-discovery of postgres services in the same
+# network, uncomment the docker.sock volume + the DBIL_DISCOVER env.
+
 services:
   dbil:
-    image: dbil:dev
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    command: ["init"]
+    image: ghcr.io/unkabas/dbil:latest
+    ports:
+      - "4242:4242"
     volumes:
       - ./dbil-data:/data
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       DBIL_DATA_DIR: "/data"
+      # DBIL_DISCOVER: "docker"
+      # DBIL_NETWORK: "default"
+    restart: unless-stopped
