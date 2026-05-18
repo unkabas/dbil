@@ -1,0 +1,73 @@
+# Production-grade compose for dbil: hardened container posture, master
+# key delivered via a Docker secret, Level-2 auto-discovery of postgres
+# on the app network. Use this as a starting point — adjust the postgres
+# section to match your real service.
+#
+# Before launch:
+#   1. Generate a 32-byte master key:
+#        head -c 32 /dev/urandom > ./secrets/dbil_master_key
+#        chmod 0400 ./secrets/dbil_master_key
+#   2. Set the POSTGRES_PASSWORD env or pull it from your secret manager.
+#   3. Start: docker compose -f examples/docker-compose.production.yml up -d
+#
+# DBil reads dbil.* labels from postgres containers on `appnet` and
+# surfaces them in the Discover page. Approve from the UI before any
+# connection becomes usable.
+
+services:
+  dbil:
+    image: ghcr.io/unkabas/dbil:latest
+    ports:
+      - "4242:4242"
+    volumes:
+      - dbil_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DBIL_DATA_DIR: "/data"
+      DBIL_MASTER_KEY_FILE: "/run/secrets/dbil_master_key"
+      DBIL_DISCOVER: "docker"
+      DBIL_NETWORK: "appnet"
+    secrets:
+      - dbil_master_key
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - appnet
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: appdb
+    labels:
+      dbil.enable: "true"
+      dbil.alias: "App DB"
+      dbil.tag: "production"
+      dbil.creds.username_env: "POSTGRES_USER"
+      dbil.creds.password_env: "POSTGRES_PASSWORD"
+      dbil.creds.database_env: "POSTGRES_DB"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - appnet
+
+volumes:
+  dbil_data:
+  pg_data:
+
+secrets:
+  dbil_master_key:
+    file: ./secrets/dbil_master_key
+
+networks:
+  appnet:

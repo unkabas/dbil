@@ -1,4 +1,4 @@
-.PHONY: help tidy build test lint lint-auth cover generate docker run-init web-deps web-build
+.PHONY: help tidy build test lint lint-auth cover generate docker image-size run-init web-deps web-build
 
 GO   ?= go
 NPM  ?= npm
@@ -55,6 +55,15 @@ generate:
 
 docker:
 	docker build -t dbil:dev .
+
+# Fails when the local image exceeds 30 MB (uncompressed manifest size).
+# Spec target is ≤25 MB; 30 MB is the hard ceiling enforced in CI as well.
+image-size:
+	@SIZE=$$(docker image inspect dbil:dev --format '{{.Size}}'); \
+	echo "dbil:dev = $$SIZE bytes ($$((SIZE/1024/1024)) MB)"; \
+	if [ $$SIZE -gt $$((30*1024*1024)) ]; then \
+		echo "FAIL: image > 30 MB"; exit 1; \
+	fi
 
 run-init: build
 	mkdir -p ./dbil-data
