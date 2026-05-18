@@ -81,6 +81,15 @@ services:
       dbil.creds.database_env: "POSTGRES_DB"
     networks: [appnet]
 
+  # One-shot sidecar. Docker creates named volumes owned by root, but
+  # dbil runs as UID 65532 (distroless nonroot). This container chowns
+  # /data once and exits cleanly before dbil starts.
+  dbil-permissions:
+    image: alpine:3
+    command: chown -R 65532:65532 /data
+    volumes:
+      - dbil_data:/data
+
   dbil:
     image: ghcr.io/unkabas/dbil:latest
     command: ["serve"]
@@ -93,6 +102,9 @@ services:
       DBIL_DISCOVER: "docker"
       DBIL_NETWORK: "appnet"
     networks: [appnet]
+    depends_on:
+      dbil-permissions:
+        condition: service_completed_successfully
 
 volumes:
   dbil_data:
