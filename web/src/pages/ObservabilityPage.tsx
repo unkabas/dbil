@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import MetricTile from '../components/observ/MetricTile'
 import SlowQueriesTable from '../components/observ/SlowQueriesTable'
 import LockChainCard from '../components/observ/LockChainCard'
+import AdvisorCard from '../components/observ/AdvisorCard'
 import Icon from '../components/Icon'
 
 export default function ObservabilityPage() {
@@ -137,6 +138,10 @@ function ObservabilityBody() {
             takenAtMs={slow.data?.taken_at_ms ?? 0}
             loading={slow.isLoading}
           />
+        </div>
+
+        <div style={{ marginBottom: 18 }}>
+          <AdvisorCard connID={conn.id} />
         </div>
 
         <LockChainCard

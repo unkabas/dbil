@@ -61,6 +61,7 @@ func Mount(d Deps) chi.Router {
 		p.Get("/api/connections/{id}/observ/slow", SlowQueriesHandler(d))
 		p.Get("/api/connections/{id}/observ/locks", LocksHandler(d))
 		p.Post("/api/connections/{id}/locks/{pid}/terminate", TerminateBackendHandler(d))
+		p.Get("/api/connections/{id}/observ/advisor", AdvisorHandler(d))
 
 		p.Get("/api/connections/{id}/schema", SchemaHandler(d))
 		p.Get("/api/connections/{id}/table/{schema}/{name}/rows", RowsHandler(d))
