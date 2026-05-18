@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import MetricTile from '../components/observ/MetricTile'
 import SlowQueriesTable from '../components/observ/SlowQueriesTable'
 import LockChainCard from '../components/observ/LockChainCard'
+import AdvisorCard from '../components/observ/AdvisorCard'
 import Icon from '../components/Icon'
 
 export default function ObservabilityPage() {
@@ -139,9 +140,15 @@ function ObservabilityBody() {
           />
         </div>
 
+        <div style={{ marginBottom: 18 }}>
+          <AdvisorCard connID={conn.id} />
+        </div>
+
         <LockChainCard
           chains={locks.data?.chains ?? []}
           loading={locks.isLoading}
+          connID={conn.id}
+          tag={conn.tag}
           error={
             locks.error
               ? locks.error instanceof ApiError

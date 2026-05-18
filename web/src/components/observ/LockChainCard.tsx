@@ -1,13 +1,18 @@
-import type { LockChain, LockSession } from '../../api/observ'
+import { useState } from 'react'
+import { useTerminateBackend, type LockChain, type LockSession } from '../../api/observ'
+import { ApiError } from '../../api/client'
+import type { Tag } from '../../api/connections'
 import Icon from '../Icon'
 
 interface Props {
   chains: LockChain[]
   loading?: boolean
   error?: string | null
+  connID: number | null
+  tag: Tag | null
 }
 
-export default function LockChainCard({ chains, loading, error }: Props) {
+export default function LockChainCard({ chains, loading, error, connID, tag }: Props) {
   return (
     <div
       style={{
@@ -82,7 +87,7 @@ export default function LockChainCard({ chains, loading, error }: Props) {
       ) : (
         <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {chains.map((c, i) => (
-            <ChainRow key={i} chain={c} />
+            <ChainRow key={i} chain={c} connID={connID} tag={tag} />
           ))}
         </div>
       )}
@@ -90,7 +95,38 @@ export default function LockChainCard({ chains, loading, error }: Props) {
   )
 }
 
-function ChainRow({ chain }: { chain: LockChain }) {
+function ChainRow({ chain, connID, tag }: { chain: LockChain; connID: number | null; tag: Tag | null }) {
+  const terminate = useTerminateBackend(connID)
+  const [killError, setKillError] = useState<string | null>(null)
+  const [pendingPID, setPendingPID] = useState<number | null>(null)
+
+  const needsConfirm = tag === 'staging' || tag === 'production'
+
+  const onKill = async (pid: number) => {
+    if (connID === null) return
+    const protectedPrompt =
+      needsConfirm &&
+      !window.confirm(
+        `Send pg_terminate_backend(${pid}) on a ${tag} connection?\n\nThe session will be killed immediately.`,
+      )
+    if (protectedPrompt) return
+    setKillError(null)
+    setPendingPID(pid)
+    try {
+      await terminate.mutateAsync({ pid, confirm: needsConfirm })
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setKillError(err.body.reason || err.body.error || `HTTP ${err.status}`)
+      } else if (err instanceof Error) {
+        setKillError(err.message)
+      } else {
+        setKillError('Kill failed')
+      }
+    } finally {
+      setPendingPID(null)
+    }
+  }
+
   return (
     <div
       style={{
@@ -105,10 +141,33 @@ function ChainRow({ chain }: { chain: LockChain }) {
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-1)' }}>Holder</span>
         <SessionLine s={chain.holder} />
         <span style={{ flex: 1 }} />
-        <button className="btn-gh" style={{ color: 'var(--danger)' }} title="Send pg_terminate_backend (v0.6.1)">
-          <Icon name="kill" size={12} /> Kill (soon)
+        <button
+          className="btn-gh"
+          style={{ color: 'var(--danger)' }}
+          title={`pg_terminate_backend(${chain.holder.pid})`}
+          disabled={connID === null || pendingPID === chain.holder.pid}
+          onClick={() => onKill(chain.holder.pid)}
+        >
+          <Icon name="kill" size={12} />{' '}
+          {pendingPID === chain.holder.pid ? 'Killing…' : 'Kill'}
         </button>
       </div>
+      {killError && (
+        <div
+          className="mono"
+          style={{
+            marginTop: 8,
+            padding: '6px 10px',
+            borderRadius: 6,
+            background: 'var(--danger-soft)',
+            border: '1px solid rgba(255,107,122,0.3)',
+            color: 'var(--danger)',
+            fontSize: 11.5,
+          }}
+        >
+          {killError}
+        </div>
+      )}
       <div style={{ marginTop: 10, marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {chain.blocked.length === 0 && (
           <span style={{ fontSize: 11, color: 'var(--fg-4)' }}>(nothing waiting)</span>
