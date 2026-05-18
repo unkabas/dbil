@@ -27,3 +27,6 @@ Thumbs.db
 /web/node_modules/
 /web/dist/*
 !/web/dist/.gitkeep
+
+# Local-only design notes / implementation plans — not for git
+/docs/superpowers/

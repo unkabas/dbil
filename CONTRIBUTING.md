@@ -34,7 +34,7 @@ DBIL_DATA_DIR=$(mktemp -d) ./bin/dbil init
   `refactor:`, `ci:`, `build:`. Scope optional but appreciated
   (`feat(observ): …`).
 - One logical change per commit. Phase-by-phase commits work well for
-  larger features — see Plans 1-9 in `docs/superpowers/plans/`.
+  larger features.
 - **Do not** add a `Co-Authored-By` trailer. Commits should carry only
   the contributor's own identity.
 
@@ -44,13 +44,9 @@ DBIL_DATA_DIR=$(mktemp -d) ./bin/dbil init
 - Include a short description, the change rationale, and a test plan.
 - CI must pass (lint + lint-auth + race tests + govulncheck + multi-arch
   build).
-- For non-trivial changes, write a short design note under
-  `docs/superpowers/plans/`.
 
 ## Architecture pointers
 
-- High-level design: [`docs/superpowers/specs/2026-05-17-dbil-design.md`](docs/superpowers/specs/2026-05-17-dbil-design.md)
-- Per-plan implementation docs: `docs/superpowers/plans/`
 - Security model: [`SECURITY.md`](SECURITY.md)
 - Threat-modeled secrets handling lives in `internal/crypto` (envelope
   encryption, MK loader chain) and `internal/audit` (tamper-evident hash

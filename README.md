@@ -190,9 +190,6 @@ cd web && npm run dev
 
 ## Docs
 
-The design spec, all per-plan write-ups, and the threat model live in
-[`docs/superpowers/`](docs/superpowers).
-
 - [Contributing](CONTRIBUTING.md)
 - [Security disclosure](SECURITY.md)
 - [Apache 2.0 license](LICENSE)
