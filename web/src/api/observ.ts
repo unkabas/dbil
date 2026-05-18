@@ -91,6 +91,38 @@ export function useLocks(connID: number | null) {
   })
 }
 
+export interface MissingIndexHint {
+  schema: string
+  table: string
+  seq_scans: number
+  idx_scans: number
+  live_rows: number
+  size_bytes: number
+  seq_rows_avg: number
+}
+
+export interface UnusedIndexHint {
+  schema: string
+  table: string
+  index: string
+  size_bytes: number
+  is_unique: boolean
+}
+
+export interface AdvisorReport {
+  missing_indexes: MissingIndexHint[]
+  unused_indexes: UnusedIndexHint[]
+}
+
+export function useAdvisor(connID: number | null) {
+  return useQuery({
+    queryKey: ['observ', 'advisor', connID],
+    enabled: connID !== null && connID !== 0,
+    queryFn: () => apiFetch<AdvisorReport>(`/api/connections/${connID}/observ/advisor`),
+    staleTime: 60_000,
+  })
+}
+
 export interface TerminateResponse {
   signalled: boolean
   pid: number
