@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src=".github/assets/anim.gif" alt="dbil demo" width="820" />
+  <img src=".github/assets/demo.gif" alt="dbil demo" width="820" />
 </p>
 
 ---
