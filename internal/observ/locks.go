@@ -2,9 +2,46 @@ package observ
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/unkabas/dbil/internal/postgres"
 )
+
+// ErrSelfTerminate is returned by TerminateBackend when the caller passes
+// a non-positive pid or one matching pg_backend_pid() (the dbil
+// connection itself). The latter check is enforced server-side in the SQL.
+var ErrSelfTerminate = errors.New("refusing to terminate own backend or invalid pid")
+
+// TerminateBackend asks Postgres to send a SIGTERM to the session
+// identified by pid (pg_terminate_backend). Returns:
+//   - (true,  nil) if the function returned true (signal delivered).
+//   - (false, nil) if the function returned false (process already gone
+//     or insufficient privilege).
+//   - (false, ErrSelfTerminate) if pid is invalid or matches our own pid.
+//   - (false, err) on any driver-level failure.
+func TerminateBackend(ctx context.Context, pool postgres.Pool, pid int) (bool, error) {
+	if pid <= 0 {
+		return false, ErrSelfTerminate
+	}
+	// The SQL refuses to kill our own backend defensively, in case the
+	// caller forgets the guard above.
+	sql := fmt.Sprintf(
+		"SELECT CASE WHEN %d = pg_backend_pid() THEN false ELSE pg_terminate_backend(%d) END",
+		pid, pid,
+	)
+	res, err := pool.Execute(ctx, sql)
+	if err != nil {
+		return false, fmt.Errorf("terminate: %w", err)
+	}
+	if len(res.Rows) == 0 || len(res.Rows[0]) == 0 {
+		return false, fmt.Errorf("terminate: empty result")
+	}
+	if b, ok := res.Rows[0][0].(bool); ok {
+		return b, nil
+	}
+	return false, fmt.Errorf("terminate: unexpected result type %T", res.Rows[0][0])
+}
 
 // ListLockChains returns the live lock graph for pool: a list of "chains"
 // where each chain has a holder (a session that is blocking others) and

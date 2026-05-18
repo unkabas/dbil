@@ -142,6 +142,8 @@ function ObservabilityBody() {
         <LockChainCard
           chains={locks.data?.chains ?? []}
           loading={locks.isLoading}
+          connID={conn.id}
+          tag={conn.tag}
           error={
             locks.error
               ? locks.error instanceof ApiError
