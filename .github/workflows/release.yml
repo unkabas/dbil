@@ -183,16 +183,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      # Pull only the artifacts we want on the release page. We explicitly
+      # skip the .dockerbuild build-summary blobs auto-uploaded by
+      # docker/build-push-action@v6 — they are storage attestations, not
+      # user-facing assets, and they corrupt download retries.
+      - name: Download binaries
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: release-files
+          pattern: dbil-*
+          merge-multiple: true
 
-      - name: Flatten artifact tree
-        run: |
-          mkdir -p release-files
-          find artifacts -type f -exec cp -v {} release-files/ \;
-          ls -lh release-files/
+      - name: Download SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: release-files
+
+      - name: Show release contents
+        run: ls -lh release-files/
 
       - name: Create release
         env:
