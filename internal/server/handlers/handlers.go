@@ -22,12 +22,13 @@ import (
 // Deps bundles everything HTTP handlers need from the storage and postgres
 // layers. Constructed once at server start, passed to Mount.
 type Deps struct {
-	Auth      auth.Deps
-	Conns     *store.ConnectionsRepo
-	Manager   *postgres.Manager
-	Observ    *store.ObservabilityRepo
-	ObservMgr *observ.Manager
-	Version   string
+	Auth       auth.Deps
+	Conns      *store.ConnectionsRepo
+	Manager    *postgres.Manager
+	Observ     *store.ObservabilityRepo
+	ObservMgr  *observ.Manager
+	Discovered *store.DiscoveredRepo
+	Version    string
 }
 
 // Mount composes all DBil routes onto a fresh chi.Router and returns it.
@@ -62,6 +63,10 @@ func Mount(d Deps) chi.Router {
 
 		p.Get("/api/connections/{id}/schema", SchemaHandler(d))
 		p.Get("/api/connections/{id}/table/{schema}/{name}/rows", RowsHandler(d))
+
+		p.Get("/api/discover", ListDiscoverHandler(d))
+		p.Post("/api/discover/{id}/approve", ApproveDiscoverHandler(d))
+		p.Post("/api/discover/{id}/reject", RejectDiscoverHandler(d))
 	})
 
 	// --- Static SPA (embedded React bundle) ---
