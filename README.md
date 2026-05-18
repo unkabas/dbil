@@ -1,8 +1,8 @@
 # dbil
 
-> A security-first, drop-in PostgreSQL workspace. Single ~20 MB container.
-> ER schema view, real-time observability, and locked-down production
-> safety — embedded in one static binary.
+A PostgreSQL workspace you can drop into a `docker-compose` project. It's
+one 20-megabyte container with the React UI baked in. Schema viewer,
+query editor, observability, all in there.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/unkabas/dbil/actions/workflows/ci.yml/badge.svg)](https://github.com/unkabas/dbil/actions/workflows/ci.yml)
@@ -10,19 +10,61 @@
 
 ---
 
-## Why dbil
+## What you get
 
-- **Drops into any `docker-compose`.** Auto-discovers Postgres services via Docker socket labels (Level 2) or env-JSON (Level 1). You approve from the UI before any connection is created.
-- **pgAnalyze-class observability** out of the box: TPS, cache hit, sessions, replication lag with sparklines, live `pg_stat_statements` slow-query rankings, and lock-chain graphs from `pg_blocking_pids`.
-- **Real schema view** powered by `pg_catalog`: ER diagram with auto-laid-out tables, PK/FK/unique markers, type pills, and a paginated data browser bound to real rows.
-- **Tag-driven safety**: every connection is `local`/`dev`/`staging`/`production`. Production blocks DDL outright, requires `X-Confirm: yes` for DML, and refuses `DELETE`/`UPDATE` without a `WHERE`.
-- **Security-first by construction**: envelope encryption (master key → per-connection DEK → AEAD field), tamper-evident SHA-256 audit chain, six master-key loader chain (KMS / keychain / mounted secret / env / TTY / auto-generated), and an AST lint that enforces `RequireAuth` on every handler.
-- **One static binary, distroless image, no CGO.** Multi-arch (`linux/amd64`, `linux/arm64`), cosign-signed, SBOM-attested.
+Point it at a Postgres instance and you can browse the schema as a real
+ER diagram (built from `pg_catalog`, no manual layout), page through
+table rows, run SQL with autocompletion, and watch live metrics —
+TPS, cache hit ratio, replication lag, slow queries, lock chains,
+unused indexes. Production-tagged connections refuse DDL outright and
+block `DELETE`/`UPDATE` without a `WHERE`. If something is blocking
+five other sessions, hit Kill and dbil sends `pg_terminate_backend`.
 
-## Quickstart — drop into your compose
+Connection passwords don't sit in plaintext anywhere. The master key
+unlocks a per-connection DEK; that DEK encrypts the credential fields.
+Every audit entry is hashed forward, so tampering with one row breaks
+the chain.
+
+## Run it next to your Postgres
+
+The fastest path is the production compose example in this repo:
+
+```bash
+git clone https://github.com/unkabas/dbil
+cd dbil/examples
+
+# generate the master key (32 random bytes, mode 0400)
+mkdir -p secrets
+head -c 32 /dev/urandom > secrets/dbil_master_key
+chmod 0400 secrets/dbil_master_key
+
+# pick a postgres password — anything you like
+echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)" > .env
+
+# first run: creates the admin user and prints the password
+docker compose -f docker-compose.production.yml run --rm dbil init
+
+# then bring up postgres + dbil
+docker compose -f docker-compose.production.yml up -d
+```
+
+Open <http://localhost:4242>. Log in as `admin@local` with the password
+from the `init` step. Go to **Discover** — dbil already saw your
+postgres container (it reads `dbil.*` labels on the same network).
+Approve it, enter a per-connection passphrase, and you're in.
+
+Need the admin password later? It's stored inside the container volume:
+
+```bash
+docker compose exec dbil cat /data/initial-credentials.txt
+```
+
+## Want to add dbil to your own compose
+
+Two things on your Postgres service — labels and the network — then a
+dbil service in the same network with the Docker socket mounted:
 
 ```yaml
-# docker-compose.yml
 services:
   postgres:
     image: postgres:16
@@ -37,40 +79,43 @@ services:
       dbil.creds.username_env: "POSTGRES_USER"
       dbil.creds.password_env: "POSTGRES_PASSWORD"
       dbil.creds.database_env: "POSTGRES_DB"
+    networks: [appnet]
 
   dbil:
     image: ghcr.io/unkabas/dbil:latest
+    command: ["serve"]
+    user: "65532:0"
     ports: ["4242:4242"]
     volumes:
-      - ./dbil-data:/data
+      - dbil_data:/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       DBIL_DISCOVER: "docker"
-      DBIL_NETWORK: "default"
+      DBIL_NETWORK: "appnet"
+    networks: [appnet]
+
+volumes:
+  dbil_data:
+
+networks:
+  appnet:
+    name: appnet
 ```
 
-```bash
-docker compose up -d
-open http://localhost:4242
-```
+Same drill: `docker compose run --rm dbil init` once, then
+`docker compose up -d`. The `user: "65532:0"` line lets dbil read the
+Docker socket without running as root. The explicit `name: appnet` on
+the network keeps compose from prefixing it with the project name —
+otherwise `DBIL_NETWORK` won't match what the engine reports.
 
-The first run generates an admin password into
-`./dbil-data/initial-credentials.txt`. Log in, head to **Discover**,
-approve the postgres service, and you're in.
+If you don't want dbil touching the Docker socket at all, drop the
+`DBIL_DISCOVER` env and the socket mount. You can still add
+connections by hand from the UI.
 
-A production-grade hardened example lives in
-[`examples/docker-compose.production.yml`](examples/docker-compose.production.yml).
+## Verifying the image
 
-## Install
-
-### Docker
-
-```bash
-docker pull ghcr.io/unkabas/dbil:latest
-docker run --rm -p 4242:4242 -v $(pwd)/dbil-data:/data ghcr.io/unkabas/dbil:latest serve
-```
-
-Verify the image signature with cosign:
+Every release tag publishes a multi-arch image signed with cosign
+keyless OIDC. Check it before you run anything in production:
 
 ```bash
 cosign verify ghcr.io/unkabas/dbil:latest \
@@ -78,41 +123,52 @@ cosign verify ghcr.io/unkabas/dbil:latest \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com
 ```
 
-### Native binary
+SPDX SBOMs come attached to each [GitHub
+release](https://github.com/unkabas/dbil/releases).
 
-Pre-built binaries for `linux/{amd64,arm64}` and `darwin/{amd64,arm64}`
-ship on every [release](https://github.com/unkabas/dbil/releases).
+## Native binaries
 
-## Features
+If you'd rather not run Docker, every release has prebuilt binaries
+for `linux/{amd64,arm64}` and `darwin/{amd64,arm64}`. Grab one,
+make it executable, then:
 
-| Feature | Status |
-|---|---|
-| ER schema view (real `pg_catalog`) | ✅ |
-| Server-paginated data browser | ✅ |
-| SQL editor (CodeMirror 6, Postgres grammar) | ✅ |
-| Observability: TPS / cache hit / sessions / replication lag | ✅ |
-| Slow-query rankings (`pg_stat_statements`) | ✅ |
-| Live lock chains (`pg_blocking_pids`) | ✅ |
-| Tag-driven DML/DDL safety gates | ✅ |
-| Compose auto-discovery (env + Docker socket) | ✅ |
-| Envelope-encrypted state at rest | ✅ |
-| Tamper-evident audit chain | ✅ |
-| `cosign`-signed multi-arch image + SBOM | ✅ |
-| `pg_terminate_backend` from the UI | 🛣️ v1.1 |
-| Index advisor + bloat detector | 🛣️ v1.1 |
-| OS-native `pg_terminate_backend` kill, OTel /metrics export | 🛣️ v1.2 |
+```bash
+DBIL_DATA_DIR=./dbil-data ./dbil init
+./dbil serve
+```
+
+## Tags and policies
+
+A connection lives under one of four tags. They drive how aggressive
+dbil is about protecting you:
+
+- `local` — anything goes, 5-minute statement timeout.
+- `dev` — same, 30-second timeout.
+- `staging` — DML and DDL want an `X-Confirm: yes` header.
+  `DELETE`/`UPDATE` without a `WHERE` is blocked.
+- `production` — DDL is blocked outright. DML wants confirmation.
+  Each production connection has its own passphrase, separate from
+  the master key. Lose the passphrase, lose access — by design.
+
+You set the tag when you create the connection. dbil's auto-discovery
+reads it from the `dbil.tag` label.
 
 ## Security model
 
-See [`SECURITY.md`](SECURITY.md). TL;DR:
+Short version. The longer one is in [`SECURITY.md`](SECURITY.md).
 
-- Connection credentials never live on disk in plaintext (envelope-encrypted).
-- Audit entries are encrypted *and* hash-chained.
-- Every API handler is auth-gated (enforced by an AST check in CI).
-- Production-tagged connections require a per-connection passphrase
-  separate from the master key.
-- Container ships as distroless, non-root, ready for `read_only: true`,
-  `cap_drop: [ALL]`, and `no-new-privileges`.
+The state file (`/data/dbil.db`, SQLite) is application-encrypted: per
+field, per row, with AES-256-GCM and AAD that binds the ciphertext to
+the connection id. A leaked `.db` file is still ciphertext without the
+master key. The master key comes from one of six loaders — KMS, OS
+keychain, a mounted secret file, an env var, a TTY prompt, or
+auto-generated as a last resort. Env-var and auto-generated keys
+print a startup warning so you don't ship them by accident.
+
+Audit rows carry encrypted detail blobs and a SHA-256 chain hash.
+Mutate one row in the DB and `AuditRepo.VerifyChain` flags it. Every
+HTTP handler sits behind `auth.RequireAuth` — a static AST check
+(`scripts/lint-auth`) fails CI if anyone ever forgets.
 
 ## Build from source
 
@@ -121,25 +177,22 @@ git clone https://github.com/unkabas/dbil
 cd dbil
 make web-deps tidy
 make test
-make build       # ./bin/dbil
+make build       # ./bin/dbil with the SPA embedded
 make docker      # docker build -t dbil:dev .
 ```
 
-Run locally without Docker:
+Frontend hot-reload for UI work:
 
 ```bash
-DBIL_DATA_DIR=$(mktemp -d) ./bin/dbil init
-./bin/dbil serve
-# http://localhost:4242
+cd web && npm run dev
+# http://127.0.0.1:5173, /api proxied to localhost:4242
 ```
 
 ## Docs
 
-- High-level design: [`docs/superpowers/specs/2026-05-17-dbil-design.md`](docs/superpowers/specs/2026-05-17-dbil-design.md)
-- Per-plan implementation history: [`docs/superpowers/plans/`](docs/superpowers/plans)
-- Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- Security disclosure: [`SECURITY.md`](SECURITY.md)
+The design spec, all per-plan write-ups, and the threat model live in
+[`docs/superpowers/`](docs/superpowers).
 
-## License
-
-Apache 2.0 — see [`LICENSE`](LICENSE).
+- [Contributing](CONTRIBUTING.md)
+- [Security disclosure](SECURITY.md)
+- [Apache 2.0 license](LICENSE)

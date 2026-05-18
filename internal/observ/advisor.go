@@ -119,14 +119,14 @@ SELECT
     schemaname                                                    AS schema,
     relname                                                       AS table,
     indexrelname                                                  AS index,
-    pg_relation_size(indexrelid)::bigint                          AS size_bytes,
+    pg_relation_size(psi.indexrelid)::bigint                      AS size_bytes,
     COALESCE(pi.indisunique, false)                               AS is_unique
 FROM pg_stat_user_indexes psi
 JOIN pg_index pi ON pi.indexrelid = psi.indexrelid
 WHERE idx_scan = 0
   AND NOT pi.indisunique
   AND NOT pi.indisprimary
-  AND pg_relation_size(indexrelid) > 1024 * 1024
-ORDER BY pg_relation_size(indexrelid) DESC
+  AND pg_relation_size(psi.indexrelid) > 1024 * 1024
+ORDER BY pg_relation_size(psi.indexrelid) DESC
 LIMIT 50
 `
