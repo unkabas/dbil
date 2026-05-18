@@ -30,8 +30,8 @@ type Probe struct {
 
 // ColumnDef describes one column in a query Result.
 type ColumnDef struct {
-	Name     string
-	TypeName string // pgtype name when known (e.g. "int4", "text"); empty otherwise.
+	Name     string `json:"name"`
+	TypeName string `json:"type_name"` // pgtype name when known (e.g. "int4", "text"); empty otherwise.
 }
 
 // Result is the engine-neutral shape returned by Pool.Execute.

@@ -1,3 +1,7 @@
+# golangci-lint v2 config. v2 separates code formatters (gofmt, goimports)
+# from logical linters; v1's flat list is no longer accepted.
+version: "2"
+
 run:
   timeout: 5m
 
@@ -9,27 +13,28 @@ linters:
     - staticcheck
     - revive
     - gocritic
-    - gofmt
-    - goimports
     - bodyclose
     - noctx
     - sqlclosecheck
     - nilerr
-
-linters-settings:
-  revive:
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: false
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+  exclusions:
     rules:
-      - name: exported
-        disabled: false
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-      - style
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
 
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
+formatters:
+  enable:
+    - gofmt
+    - goimports
