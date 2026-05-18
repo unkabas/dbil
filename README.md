@@ -17,7 +17,15 @@
 </p>
 
 <p align="center">
-  <img src=".github/assets/demo.gif" alt="dbil demo" width="820" />
+  <video src="https://github.com/user-attachments/assets/689d40df-6fe7-4a13-87b9-110aba811b35"
+         width="820"
+         autoplay
+         loop
+         muted
+         playsinline
+         controls>
+    <img src=".github/assets/demo.gif" alt="dbil demo" width="820" />
+  </video>
 </p>
 
 ---
