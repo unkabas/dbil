@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import Icon, { type IconName } from './Icon'
 import { useAuth } from '../auth/AuthContext'
+import { useDiscovered } from '../api/discover'
 
 interface NavItem {
   to: string
@@ -11,17 +12,20 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
-  { to: '/',            label: 'Schema',        icon: 'schema', hot: 'S' },
-  { to: '/data',        label: 'Data',          icon: 'data',   hot: 'D' },
-  { to: '/observ',      label: 'Observability', icon: 'observ', hot: 'O' },
-  { to: '/query',       label: 'Query',         icon: 'query',  hot: 'Q' },
-  { to: '/audit',       label: 'Audit',         icon: 'audit',  hot: 'A', disabled: true },
-  { to: '/connections', label: 'Connections',   icon: 'conn',   hot: 'C' },
+  { to: '/',            label: 'Schema',        icon: 'schema',   hot: 'S' },
+  { to: '/data',        label: 'Data',          icon: 'data',     hot: 'D' },
+  { to: '/observ',      label: 'Observability', icon: 'observ',   hot: 'O' },
+  { to: '/discover',    label: 'Discover',      icon: 'sparkles', hot: 'I' },
+  { to: '/query',       label: 'Query',         icon: 'query',    hot: 'Q' },
+  { to: '/audit',       label: 'Audit',         icon: 'audit',    hot: 'A', disabled: true },
+  { to: '/connections', label: 'Connections',   icon: 'conn',     hot: 'C' },
 ]
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
   const initials = (user?.email ?? '?').slice(0, 2).toUpperCase()
+  const { data: discover } = useDiscovered()
+  const pendingCount = discover?.entries.filter((e) => e.status === 'pending').length ?? 0
 
   return (
     <aside
@@ -147,6 +151,26 @@ export default function Sidebar() {
                 {it.disabled ? (
                   <span style={{ fontSize: 9.5, color: 'var(--fg-4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     soon
+                  </span>
+                ) : it.to === '/discover' && pendingCount > 0 ? (
+                  <span
+                    style={{
+                      minWidth: 16,
+                      height: 16,
+                      padding: '0 5px',
+                      borderRadius: 999,
+                      background: 'var(--warn-soft)',
+                      color: 'var(--warn)',
+                      border: '1px solid rgba(245,165,36,0.4)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  >
+                    {pendingCount}
                   </span>
                 ) : (
                   <span className="kbd" style={{ opacity: 0.7 }}>

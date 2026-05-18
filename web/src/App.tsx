@@ -9,6 +9,7 @@ import QueryPage from './pages/QueryPage'
 import DataPage from './pages/DataPage'
 import ConnectionsPage from './pages/ConnectionsPage'
 import ObservabilityPage from './pages/ObservabilityPage'
+import DiscoverPage from './pages/DiscoverPage'
 import { useConnections } from './api/connections'
 import type { ShellContext } from './shell/context'
 
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/data" element={<DataPage />} />
             <Route path="/data/:schema/:name" element={<DataPage />} />
             <Route path="/observ" element={<ObservabilityPage />} />
+            <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
           </Route>
         </Route>
