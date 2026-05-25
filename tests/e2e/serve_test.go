@@ -18,12 +18,13 @@ import (
 )
 
 // TestE2E_ServeFullLoginFlow exercises the whole production flow:
-//   `dbil init`   -> creates admin + writes initial-credentials.txt
-//   `dbil serve`  -> spawned as a background process on a free port
-//   POST /api/auth/login           -> 200, token
-//   GET  /api/me  with token       -> 200, admin user
-//   POST /api/auth/logout w/ token -> 204
-//   GET  /api/me  with same token  -> 401
+//
+//	`dbil init`   -> creates admin + writes initial-credentials.txt
+//	`dbil serve`  -> spawned as a background process on a free port
+//	POST /api/auth/login           -> 200, token
+//	GET  /api/me  with token       -> 200, admin user
+//	POST /api/auth/logout w/ token -> 204
+//	GET  /api/me  with same token  -> 401
 func TestE2E_ServeFullLoginFlow(t *testing.T) {
 	bin := buildBinary(t)
 	dataDir := t.TempDir()
@@ -93,6 +94,51 @@ func TestE2E_ServeFullLoginFlow(t *testing.T) {
 	// /api/me with the now-revoked token must 401.
 	if status := bearerStatus(t, http.MethodGet, base+"/api/me", loginResp.Token); status != http.StatusUnauthorized {
 		t.Fatalf("post-logout /api/me: want 401, got %d", status)
+	}
+}
+
+func TestE2E_ServeBootstrapsEmptyDataDir(t *testing.T) {
+	bin := buildBinary(t)
+	dataDir := t.TempDir()
+	port := freePort(t)
+
+	cmd := exec.Command(bin, "serve")
+	cmd.Env = []string{
+		"DBIL_DATA_DIR=" + dataDir,
+		"DBIL_PORT=" + strconv.Itoa(port),
+		"PATH=" + os.Getenv("PATH"),
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = io.Discard
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start serve: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = cmd.Process.Signal(syscall.SIGTERM)
+		_, _ = cmd.Process.Wait()
+	})
+
+	base := fmt.Sprintf("http://127.0.0.1:%d", port)
+	if err := waitHealthz(base, 5*time.Second); err != nil {
+		t.Fatalf("server never became healthy: %v\nstderr: %s", err, stderr.String())
+	}
+
+	if _, err := os.Stat(filepath.Join(dataDir, "dbil.db")); err != nil {
+		t.Fatalf("dbil.db missing after serve bootstrap: %v", err)
+	}
+	password := readInitialPassword(t, dataDir)
+
+	var loginResp struct {
+		Token string `json:"token"`
+	}
+	if err := postJSON(base+"/api/auth/login", "", map[string]string{
+		"email": "admin@local", "password": password,
+	}, &loginResp); err != nil {
+		t.Fatalf("login after serve bootstrap: %v", err)
+	}
+	if loginResp.Token == "" {
+		t.Fatal("login returned empty token")
 	}
 }
 

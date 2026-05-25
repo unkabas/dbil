@@ -53,7 +53,10 @@ state file on disk is not. The goals are:
    `X-Confirm: yes` for dangerous statements.
 6. **Read-only container surface.** The reference compose runs the
    binary in a distroless image with `read_only: true`, `cap_drop:
-   [ALL]`, and `no-new-privileges`.
+   [ALL]`, `cap_add: [CHOWN, SETGID, SETUID]`, and
+   `no-new-privileges`. Those three capabilities are used only during
+   startup so the process can fix `/data` ownership and drop to UID
+   65532 before opening the state DB or serving HTTP.
 
 ## What is **not** in scope
 
@@ -68,7 +71,8 @@ state file on disk is not. The goals are:
 - Provision the MK from KMS, the OS keychain, or a mounted secret
   file — never via `DBIL_MASTER_KEY`.
 - Mount the Docker socket read-only when using Level-2 discovery.
-- Run with `read_only: true`, `cap_drop: [ALL]`,
+- Run with `read_only: true`, `cap_drop: [ALL]`, `cap_add:
+  [CHOWN, SETGID, SETUID]`,
   `security_opt: [no-new-privileges:true]`. See
   `examples/docker-compose.production.yml`.
 - Rotate the admin password and all auto-generated MKs on first run.

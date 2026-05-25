@@ -22,7 +22,7 @@ help:
 	@echo "  cover     - generate HTML coverage report"
 	@echo "  generate  - run sqlc"
 	@echo "  docker    - docker build -t dbil:dev ."
-	@echo "  run-init  - run \$$(BIN) init in ./dbil-data"
+	@echo "  run-init  - explicitly bootstrap ./dbil-data with \$$(BIN) init"
 
 tidy:
 	$(GO) mod tidy

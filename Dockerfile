@@ -43,7 +43,10 @@ LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 COPY --from=build /out/dbil /dbil
 
-USER nonroot:nonroot
+# The container starts as root only long enough for `dbil init|serve` to fix
+# /data ownership on fresh Docker named volumes. The binary then drops to
+# UID 65532 / GID 0 before opening the state DB or serving HTTP.
+USER 0:0
 EXPOSE 4242
 ENTRYPOINT ["/dbil"]
 CMD ["version"]

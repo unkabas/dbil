@@ -61,15 +61,12 @@ chmod 0400 secrets/dbil_master_key
 # pick a postgres password — anything you like
 echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)" > .env
 
-# first run: creates the admin user and prints the password
-docker compose -f docker-compose.production.yml run --rm dbil init
-
-# then bring up postgres + dbil
+# first run creates the admin user and prints the password
 docker compose -f docker-compose.production.yml up -d
 ```
 
 Open <http://localhost:4242>. Log in as `admin@local` with the password
-from the `init` step. Go to **Discover** — dbil already saw your
+from the dbil startup logs. Go to **Discover** — dbil already saw your
 postgres container (it reads `dbil.*` labels on the same network).
 Approve it, enter a per-connection passphrase, and you're in.
 
@@ -101,19 +98,9 @@ services:
       dbil.creds.database_env: "POSTGRES_DB"
     networks: [appnet]
 
-  # One-shot sidecar. Docker creates named volumes owned by root, but
-  # dbil runs as UID 65532 (distroless nonroot). This container chowns
-  # /data once and exits cleanly before dbil starts.
-  dbil-permissions:
-    image: alpine:3
-    command: chown -R 65532:65532 /data
-    volumes:
-      - dbil_data:/data
-
   dbil:
     image: ghcr.io/unkabas/dbil:latest
     command: ["serve"]
-    user: "65532:0"
     ports: ["4242:4242"]
     volumes:
       - dbil_data:/data
@@ -122,9 +109,6 @@ services:
       DBIL_DISCOVER: "docker"
       DBIL_NETWORK: "appnet"
     networks: [appnet]
-    depends_on:
-      dbil-permissions:
-        condition: service_completed_successfully
 
 volumes:
   dbil_data:
@@ -134,11 +118,15 @@ networks:
     name: appnet
 ```
 
-Same drill: `docker compose run --rm dbil init` once, then
-`docker compose up -d`. The `user: "65532:0"` line lets dbil read the
-Docker socket without running as root. The explicit `name: appnet` on
-the network keeps compose from prefixing it with the project name —
-otherwise `DBIL_NETWORK` won't match what the engine reports.
+Run `docker compose up -d`. On an empty `/data`, `dbil serve`
+bootstraps the state DB, creates the first admin, writes
+`/data/initial-credentials.txt`, then starts the UI. The container
+starts as root only long enough to fix named-volume ownership and then
+drops to UID 65532 / GID 0 before opening the state DB or serving HTTP;
+GID 0 lets dbil read the Docker socket without running the server as
+root. The explicit `name: appnet` on the network keeps compose from
+prefixing it with the project name — otherwise `DBIL_NETWORK` won't
+match what the engine reports.
 
 If you don't want dbil touching the Docker socket at all, drop the
 `DBIL_DISCOVER` env and the socket mount. You can still add
@@ -165,8 +153,7 @@ for `linux/{amd64,arm64}` and `darwin/{amd64,arm64}`. Grab one,
 make it executable, then:
 
 ```bash
-DBIL_DATA_DIR=./dbil-data ./dbil init
-./dbil serve
+DBIL_DATA_DIR=./dbil-data ./dbil serve
 ```
 
 ## Tags and policies

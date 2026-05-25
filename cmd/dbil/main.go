@@ -1,5 +1,5 @@
 // Command dbil is the entrypoint binary. Subcommands `version` and `init`
-// are wired here; later plans add `serve`.
+// and `serve` are wired here.
 package main
 
 import (
@@ -66,6 +66,9 @@ func initCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := config.Load()
 			if err != nil {
+				return err
+			}
+			if err := prepareContainerRuntime(cfg); err != nil {
 				return err
 			}
 			res, err := bootstrap.RunInit(cmd.Context(), cfg)

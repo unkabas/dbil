@@ -16,8 +16,7 @@ make build      # ./bin/dbil (with the SPA embedded)
 Run the binary locally:
 
 ```bash
-DBIL_DATA_DIR=$(mktemp -d) ./bin/dbil init
-./bin/dbil serve   # http://localhost:4242
+DBIL_DATA_DIR=$(mktemp -d) ./bin/dbil serve   # http://localhost:4242
 ```
 
 ## Code style

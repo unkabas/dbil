@@ -6,35 +6,21 @@
 #   chmod 0400 secrets/dbil_master_key
 #   echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)" > .env
 #
-# First launch (creates admin + writes initial password to logs):
-#   docker compose run --rm dbil init
-#
-# Routine launch:
+# Launch:
 #   docker compose up -d
 #
 # Read the admin password back any time:
 #   docker compose exec dbil cat /data/initial-credentials.txt
 
 services:
-  # Init sidecar: distroless dbil runs as UID 65532, but Docker creates
-  # named volumes owned by root. This one-shot container fixes /data
-  # ownership before the main container starts. Runs once, exits cleanly.
-  dbil-permissions:
-    image: alpine:3
-    command: chown -R 65532:65532 /data
-    volumes:
-      - dbil_data:/data
-
   dbil:
     image: ghcr.io/unkabas/dbil:latest
     command: ["serve"]
-    # The image runs as nonroot (UID 65532). Override the group to 0 so
-    # the container can read /var/run/docker.sock (the socket is
-    # 0660 root:root on every distro we've seen). UID stays nonroot —
-    # this isn't a privileged container, just one with root-group read.
-    # For tighter setups, replace the socket mount with
-    # tecnativa/docker-socket-proxy and drop the group override.
-    user: "65532:0"
+    # The image starts as root only long enough to fix /data ownership on
+    # a fresh named volume, then dbil drops itself to UID 65532 / GID 0.
+    # GID 0 lets it read /var/run/docker.sock on common Docker hosts
+    # without running the HTTP server as root. For tighter setups, replace
+    # the socket mount with tecnativa/docker-socket-proxy.
     ports:
       - "4242:4242"
     volumes:
@@ -55,14 +41,16 @@ services:
       - /tmp
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
     networks:
       - appnet
     depends_on:
-      dbil-permissions:
-        condition: service_completed_successfully
       postgres:
         condition: service_started
 

@@ -25,13 +25,20 @@ import (
 func serveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
-		Short: "Run the DBil HTTP server (requires `dbil init` to have been run first)",
+		Short: "Run the DBil HTTP server, bootstrapping empty data dirs automatically",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 
 			cfg, err := config.Load()
 			if err != nil {
 				return err
+			}
+			if err := prepareContainerRuntime(cfg); err != nil {
+				return err
+			}
+
+			if _, err := bootstrap.RunInit(ctx, cfg); err != nil {
+				return fmt.Errorf("serve: bootstrap: %w", err)
 			}
 
 			mk, src, err := bootstrap.LoadMasterKey(ctx, cfg)
