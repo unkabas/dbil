@@ -51,6 +51,19 @@ type Pool interface {
 	Execute(ctx context.Context, sql string) (*Result, error)
 }
 
+type rowLimitPool interface {
+	ExecuteWithLimit(ctx context.Context, sql string, rowCap int) (*Result, error)
+}
+
+// ExecuteWithLimit runs sql with a caller-supplied row cap when the concrete
+// pool supports it, falling back to Execute for older test doubles.
+func ExecuteWithLimit(ctx context.Context, pool Pool, sql string, rowCap int) (*Result, error) {
+	if p, ok := pool.(rowLimitPool); ok {
+		return p.ExecuteWithLimit(ctx, sql, rowCap)
+	}
+	return pool.Execute(ctx, sql)
+}
+
 // Driver opens, probes, and closes pools.
 type Driver interface {
 	Open(ctx context.Context, conn Conn) (Pool, error)

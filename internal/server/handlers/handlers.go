@@ -65,6 +65,9 @@ func Mount(d Deps) chi.Router {
 
 		p.Get("/api/connections/{id}/schema", SchemaHandler(d))
 		p.Get("/api/connections/{id}/table/{schema}/{name}/rows", RowsHandler(d))
+		p.Post("/api/connections/{id}/table/{schema}/{name}/rows/search", SearchRowsHandler(d))
+		p.Post("/api/connections/{id}/table/{schema}/{name}/columns/{column}/values", DistinctValuesHandler(d))
+		p.Post("/api/connections/{id}/table/{schema}/{name}/export", ExportTableHandler(d))
 
 		p.Get("/api/discover", ListDiscoverHandler(d))
 		p.Post("/api/discover/{id}/approve", ApproveDiscoverHandler(d))

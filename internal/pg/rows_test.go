@@ -58,7 +58,7 @@ func TestFetchRows_RejectsInvalidIdentifier(t *testing.T) {
 
 func TestFetchRows_PageSizeClampedAndOffset(t *testing.T) {
 	pool := &fakePool{results: map[string]*postgres.Result{
-		"SELECT c.reltuples":              {Rows: [][]any{{int64(0)}}},
+		"SELECT c.reltuples":             {Rows: [][]any{{int64(0)}}},
 		`SELECT * FROM "public"."users"`: {Rows: [][]any{}},
 	}}
 	if _, err := FetchRows(context.Background(), pool, "public", "users", 2, 10_000); err != nil {
@@ -71,7 +71,7 @@ func TestFetchRows_PageSizeClampedAndOffset(t *testing.T) {
 
 func TestFetchRows_NegativePageBecomesZero(t *testing.T) {
 	pool := &fakePool{results: map[string]*postgres.Result{
-		"SELECT c.reltuples":              {Rows: [][]any{{int64(0)}}},
+		"SELECT c.reltuples":             {Rows: [][]any{{int64(0)}}},
 		`SELECT * FROM "public"."users"`: {Rows: [][]any{}},
 	}}
 	if _, err := FetchRows(context.Background(), pool, "public", "users", -3, 0); err != nil {
@@ -89,7 +89,7 @@ func TestFetchRows_NegativePageBecomesZero(t *testing.T) {
 func TestFetchRows_EstimateMinusOneOnMissingRelation(t *testing.T) {
 	// pg_class lookup returns no rows.
 	pool := &fakePool{results: map[string]*postgres.Result{
-		"SELECT c.reltuples":              {Rows: [][]any{}},
+		"SELECT c.reltuples":             {Rows: [][]any{}},
 		`SELECT * FROM "public"."users"`: {Rows: [][]any{}},
 	}}
 	resp, err := FetchRows(context.Background(), pool, "public", "users", 0, 50)
@@ -98,6 +98,110 @@ func TestFetchRows_EstimateMinusOneOnMissingRelation(t *testing.T) {
 	}
 	if resp.EstimatedTotal != -1 {
 		t.Fatalf("estimated_total: %d (want -1)", resp.EstimatedTotal)
+	}
+}
+
+func TestSearchRows_BuildsExactValueFilters(t *testing.T) {
+	pool := &fakePool{results: map[string]*postgres.Result{
+		`SELECT COUNT(*) FROM "public"."items"`: {Rows: [][]any{{int64(2)}}},
+		`SELECT * FROM "public"."items"`: {
+			Columns: []postgres.ColumnDef{{Name: "category", TypeName: "text"}},
+			Rows:    [][]any{{"books"}, {"food"}},
+		},
+	}}
+	resp, err := SearchRows(context.Background(), pool, "public", "items", SearchRowsRequest{
+		Page: 1, PageSize: 25,
+		Filters: []TableFilter{{Column: "category", Values: []any{"books", "food"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.FilteredTotal != 2 {
+		t.Fatalf("filtered_total: %d", resp.FilteredTotal)
+	}
+	sql := lastMatching(pool.executed, `SELECT * FROM "public"."items"`)
+	if !strings.Contains(sql, `"category"::text IN ('books', 'food')`) {
+		t.Fatalf("missing IN filter: %s", sql)
+	}
+	if !strings.Contains(sql, "LIMIT 25 OFFSET 25") {
+		t.Fatalf("missing paging: %s", sql)
+	}
+}
+
+func TestSearchRows_FilterHandlesNullAndInvalidColumn(t *testing.T) {
+	pool := &fakePool{results: map[string]*postgres.Result{
+		`SELECT COUNT(*) FROM "public"."items"`: {Rows: [][]any{{int64(1)}}},
+		`SELECT * FROM "public"."items"`:        {Rows: [][]any{}},
+	}}
+	_, err := SearchRows(context.Background(), pool, "public", "items", SearchRowsRequest{
+		Filters: []TableFilter{{Column: "category", Values: []any{nil, "books"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sql := lastMatching(pool.executed, `SELECT * FROM "public"."items"`)
+	if !strings.Contains(sql, `"category"::text IN ('books') OR "category" IS NULL`) {
+		t.Fatalf("missing null filter: %s", sql)
+	}
+	_, err = SearchRows(context.Background(), pool, "public", "items", SearchRowsRequest{
+		Filters: []TableFilter{{Column: "bad column", Values: []any{"x"}}},
+	})
+	if !errors.Is(err, ErrInvalidIdentifier) {
+		t.Fatalf("expected ErrInvalidIdentifier, got %v", err)
+	}
+}
+
+func TestDistinctValues_ExcludesOwnFilter(t *testing.T) {
+	pool := &fakePool{results: map[string]*postgres.Result{
+		`SELECT "category" IS NULL`: {
+			Rows: [][]any{
+				{false, "books", int64(2)},
+				{true, "", int64(1)},
+			},
+		},
+	}}
+	resp, err := DistinctValues(context.Background(), pool, "public", "items", "category", []TableFilter{
+		{Column: "category", Values: []any{"books"}},
+		{Column: "status", Values: []any{"open"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Values) != 2 || resp.Values[1].Value != nil {
+		t.Fatalf("values: %+v", resp.Values)
+	}
+	sql := lastMatching(pool.executed, `SELECT "category" IS NULL`)
+	if strings.Contains(sql, `"category"::text IN`) {
+		t.Fatalf("own filter should be excluded from distinct query: %s", sql)
+	}
+	if !strings.Contains(sql, `"status"::text IN ('open')`) {
+		t.Fatalf("other filters should remain: %s", sql)
+	}
+}
+
+func TestExportRows_CapsAndCanIgnoreFilters(t *testing.T) {
+	rows := make([][]any, ExportRowCap+1)
+	for i := range rows {
+		rows[i] = []any{i}
+	}
+	pool := &fakePool{results: map[string]*postgres.Result{
+		`SELECT * FROM "public"."items"`: {
+			Columns: []postgres.ColumnDef{{Name: "id", TypeName: "int8"}},
+			Rows:    rows,
+		},
+	}}
+	resp, err := ExportRows(context.Background(), pool, "public", "items", []TableFilter{
+		{Column: "category", Values: []any{"books"}},
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Truncated || len(resp.Rows) != ExportRowCap {
+		t.Fatalf("cap failed: truncated=%v rows=%d", resp.Truncated, len(resp.Rows))
+	}
+	sql := lastMatching(pool.executed, `SELECT * FROM "public"."items"`)
+	if strings.Contains(sql, "WHERE") {
+		t.Fatalf("full export should ignore filters: %s", sql)
 	}
 }
 

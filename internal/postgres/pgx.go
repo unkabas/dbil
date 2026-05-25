@@ -34,6 +34,14 @@ func (p *pgxPool) Close() { p.p.Close() }
 // into a Result. The context is the caller's; statement timeout enforcement
 // lives in Manager.Execute which wraps this call with context.WithTimeout.
 func (p *pgxPool) Execute(ctx context.Context, sql string) (*Result, error) {
+	return p.ExecuteWithLimit(ctx, sql, defaultRowCap)
+}
+
+// ExecuteWithLimit runs sql against the pool and collects up to rowCap rows.
+func (p *pgxPool) ExecuteWithLimit(ctx context.Context, sql string, rowCap int) (*Result, error) {
+	if rowCap <= 0 {
+		rowCap = defaultRowCap
+	}
 	start := time.Now()
 	rows, err := p.p.Query(ctx, sql)
 	if err != nil {
@@ -57,7 +65,7 @@ func (p *pgxPool) Execute(ctx context.Context, sql string) (*Result, error) {
 		truncated  bool
 	)
 	for rows.Next() {
-		if len(resultRows) >= defaultRowCap {
+		if len(resultRows) >= rowCap {
 			truncated = true
 			break
 		}
