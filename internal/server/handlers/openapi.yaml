@@ -1,0 +1,753 @@
+openapi: 3.0.3
+info:
+  title: DBil API
+  description: |
+    HTTP API for DBil — the lightweight Postgres ops UI.
+
+    All `/api/*` endpoints (other than login, this spec, and `/api/docs`)
+    require a bearer token obtained from `POST /api/auth/login`. Connections
+    protected by a passphrase additionally need an `X-Connection-Passphrase`
+    header on per-connection routes.
+  version: '1.0'
+
+servers:
+  - url: /
+    description: Same-origin (the DBil binary serves both UI and API)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+  - name: connections
+  - name: schema
+  - name: data
+  - name: observability
+  - name: discovery
+  - name: meta
+
+paths:
+  /healthz:
+    get:
+      tags: [meta]
+      summary: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  version: { type: string }
+
+  /api/openapi.yaml:
+    get:
+      tags: [meta]
+      summary: This OpenAPI spec
+      security: []
+      responses:
+        '200':
+          description: YAML spec
+          content:
+            application/yaml: {}
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange credentials for a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: Invalidate the caller's bearer token
+      responses:
+        '204': { description: Logged out }
+
+  /api/me:
+    get:
+      tags: [auth]
+      summary: Inspect the authenticated session
+      responses:
+        '200':
+          description: Session info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+
+  /api/connections:
+    get:
+      tags: [connections]
+      summary: List connections
+      responses:
+        '200':
+          description: Connections
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Connection' }
+    post:
+      tags: [connections]
+      summary: Create a connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConnectionCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Connection' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /api/connections/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+    get:
+      tags: [connections]
+      summary: Inspect a connection
+      responses:
+        '200':
+          description: Connection
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Connection' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [connections]
+      summary: Delete a connection
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/connections/{id}/test:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+    post:
+      tags: [connections]
+      summary: Open and probe the target Postgres
+      responses:
+        '200':
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  version: { type: string }
+                  ms: { type: number }
+
+  /api/connections/{id}/query:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+    post:
+      tags: [data]
+      summary: Run an ad-hoc SQL statement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sql]
+              properties:
+                sql: { type: string }
+      responses:
+        '200':
+          description: Result set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  columns:
+                    type: array
+                    items: { $ref: '#/components/schemas/ColumnRef' }
+                  rows:
+                    type: array
+                    items:
+                      type: array
+                  duration_ms: { type: number }
+
+  /api/connections/{id}/schema:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+    get:
+      tags: [schema]
+      summary: Introspect schemas, tables, columns, FKs and indexes
+      responses:
+        '200':
+          description: Schema document
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemaDoc' }
+
+  /api/connections/{id}/table/{schema}/{name}/rows:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+      - name: schema
+        in: path
+        required: true
+        schema: { type: string }
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+      - name: page
+        in: query
+        schema: { type: integer, default: 0, minimum: 0 }
+      - name: page_size
+        in: query
+        schema: { type: integer, default: 50, minimum: 1, maximum: 200 }
+    get:
+      tags: [data]
+      summary: Fetch one page of rows
+      responses:
+        '200':
+          description: Page of rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RowsResponse' }
+
+  /api/connections/{id}/table/{schema}/{name}/rows/search:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+      - name: schema
+        in: path
+        required: true
+        schema: { type: string }
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [data]
+      summary: Filtered page of rows with exact COUNT(*)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                page: { type: integer }
+                page_size: { type: integer }
+                filters:
+                  type: array
+                  items: { $ref: '#/components/schemas/TableFilter' }
+      responses:
+        '200':
+          description: Filtered page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchRowsResponse' }
+
+  /api/connections/{id}/table/{schema}/{name}/columns/{column}/values:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+      - name: schema
+        in: path
+        required: true
+        schema: { type: string }
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+      - name: column
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [data]
+      summary: Distinct column values (for filter UIs)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filters:
+                  type: array
+                  items: { $ref: '#/components/schemas/TableFilter' }
+      responses:
+        '200':
+          description: Distinct values
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DistinctValuesResponse' }
+
+  /api/connections/{id}/table/{schema}/{name}/export:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+      - name: schema
+        in: path
+        required: true
+        schema: { type: string }
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [data]
+      summary: Export the (filtered) table as CSV / JSON / XLSX
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [format]
+              properties:
+                format: { type: string, enum: [csv, json, xlsx] }
+                scope: { type: string, enum: [filtered, all], default: filtered }
+                filters:
+                  type: array
+                  items: { $ref: '#/components/schemas/TableFilter' }
+      responses:
+        '200':
+          description: File body (CSV / JSON / binary XLSX)
+          headers:
+            Content-Disposition: { schema: { type: string } }
+            X-DBIL-Export-Truncated:
+              schema: { type: string, enum: [ 'true' ] }
+              description: Present when the cap was hit
+            X-DBIL-Export-Limit:
+              schema: { type: integer }
+              description: Max rows when truncated
+
+  /api/connections/{id}/observ/overview:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+      - name: since
+        in: query
+        description: Unix-millis lower bound. Defaults to now-5min.
+        schema: { type: integer }
+    get:
+      tags: [observability]
+      summary: Recorded TPS / cache-hit / sessions / rep-lag samples
+      responses:
+        '200':
+          description: Samples + capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  samples:
+                    type: array
+                    items: { $ref: '#/components/schemas/OverviewSample' }
+                  capabilities: { $ref: '#/components/schemas/Capabilities' }
+
+  /api/connections/{id}/observ/slow:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+    get:
+      tags: [observability]
+      summary: Latest pg_stat_statements snapshot
+      responses:
+        '200':
+          description: Slow queries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  taken_at_ms: { type: integer }
+                  rows:
+                    type: array
+                    items: { $ref: '#/components/schemas/SlowRow' }
+                  capabilities: { $ref: '#/components/schemas/Capabilities' }
+
+  /api/connections/{id}/observ/locks:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+    get:
+      tags: [observability]
+      summary: Live lock-chain query
+      responses:
+        '200':
+          description: Lock chains
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chains:
+                    type: array
+                    items: { $ref: '#/components/schemas/LockChain' }
+
+  /api/connections/{id}/observ/advisor:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+    get:
+      tags: [observability]
+      summary: Index advisor — missing and unused indexes
+      responses:
+        '200':
+          description: Advisor report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  missing_indexes:
+                    type: array
+                    items: { type: object }
+                  unused_indexes:
+                    type: array
+                    items: { type: object }
+
+  /api/connections/{id}/locks/{pid}/terminate:
+    parameters:
+      - $ref: '#/components/parameters/ConnectionID'
+      - $ref: '#/components/parameters/Passphrase'
+      - name: pid
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: X-Confirm
+        in: header
+        description: Set to "yes" to actually fire pg_terminate_backend.
+        schema: { type: string, enum: [yes] }
+    post:
+      tags: [observability]
+      summary: Terminate a Postgres backend
+      responses:
+        '200':
+          description: Result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signalled: { type: boolean }
+                  pid: { type: integer }
+
+  /api/discover:
+    get:
+      tags: [discovery]
+      summary: List auto-discovered Docker Postgres candidates
+      responses:
+        '200':
+          description: Candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+  /api/discover/{id}/approve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [discovery]
+      summary: Promote a discovered candidate into a managed connection
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Connection' }
+
+  /api/discover/{id}/reject:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [discovery]
+      summary: Reject a discovered candidate
+      responses:
+        '204': { description: Rejected }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ConnectionID:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    Passphrase:
+      name: X-Connection-Passphrase
+      in: header
+      required: false
+      description: Passphrase for connections sealed at rest.
+      schema: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        reason: { type: string }
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        expires_at: { type: integer, description: Unix millis }
+
+    Me:
+      type: object
+      properties:
+        username: { type: string }
+        is_admin: { type: boolean }
+
+    Connection:
+      type: object
+      properties:
+        id: { type: integer }
+        alias: { type: string }
+        host: { type: string }
+        port: { type: integer }
+        database: { type: string }
+        tag: { type: string, enum: [production, staging, dev, other] }
+        protected: { type: boolean }
+
+    ConnectionCreate:
+      type: object
+      required: [alias, host, port, username, password, database]
+      properties:
+        alias: { type: string }
+        host: { type: string }
+        port: { type: integer }
+        username: { type: string }
+        password: { type: string }
+        database: { type: string }
+        tag: { type: string }
+        passphrase:
+          type: string
+          description: Optional — when set, the connection is sealed at rest.
+
+    ColumnRef:
+      type: object
+      properties:
+        name: { type: string }
+        type_name: { type: string }
+
+    SchemaDoc:
+      type: object
+      properties:
+        schemas:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              tables:
+                type: array
+                items: { $ref: '#/components/schemas/Table' }
+
+    Table:
+      type: object
+      properties:
+        schema: { type: string }
+        name: { type: string }
+        rows: { type: integer, description: Exact when rows_estimated is false }
+        rows_estimated: { type: boolean }
+        rows_exact: { type: integer, nullable: true }
+        size_bytes: { type: integer }
+        kind: { type: string, enum: [r, p] }
+        has_index: { type: boolean }
+        last_analyze: { type: string }
+        columns:
+          type: array
+          items: { $ref: '#/components/schemas/Column' }
+        indexes:
+          type: array
+          items: { $ref: '#/components/schemas/Index' }
+
+    Column:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        nullable: { type: boolean }
+        pk: { type: boolean }
+        unique: { type: boolean }
+        default: { type: string }
+        comment: { type: string }
+        fk: { $ref: '#/components/schemas/FKRef' }
+
+    FKRef:
+      type: object
+      properties:
+        table: { type: string }
+        column: { type: string }
+        on_delete: { type: string }
+        on_update: { type: string }
+
+    Index:
+      type: object
+      properties:
+        name: { type: string }
+        columns:
+          type: array
+          items: { type: string }
+        unique: { type: boolean }
+        primary: { type: boolean }
+        size_bytes: { type: integer }
+        method: { type: string }
+
+    RowsResponse:
+      type: object
+      properties:
+        columns:
+          type: array
+          items: { $ref: '#/components/schemas/ColumnRef' }
+        rows:
+          type: array
+          items: { type: array }
+        estimated_total: { type: integer }
+        estimated_total_exact: { type: boolean }
+
+    SearchRowsResponse:
+      type: object
+      properties:
+        columns:
+          type: array
+          items: { $ref: '#/components/schemas/ColumnRef' }
+        rows:
+          type: array
+          items: { type: array }
+        filtered_total: { type: integer }
+        truncated: { type: boolean }
+
+    TableFilter:
+      type: object
+      properties:
+        column: { type: string }
+        values:
+          type: array
+          items: {}
+
+    DistinctValuesResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            type: object
+            properties:
+              value: {}
+              count: { type: integer }
+        truncated: { type: boolean }
+
+    OverviewSample:
+      type: object
+      properties:
+        ts_ms: { type: integer }
+        tps: { type: number }
+        cache_hit: { type: number, description: 0-1 ratio }
+        active_conns: { type: integer }
+        idle_conns: { type: integer }
+        rep_lag_ms: { type: integer, nullable: true }
+
+    SlowRow:
+      type: object
+      properties:
+        query_hash: { type: string }
+        preview: { type: string }
+        mean_ms: { type: number }
+        p95_ms: { type: number }
+        p99_ms: { type: number }
+        calls: { type: integer }
+        total_ms: { type: number }
+        rows_avg: { type: number }
+
+    LockSession:
+      type: object
+      properties:
+        pid: { type: integer }
+        user: { type: string }
+        query: { type: string }
+        age_ms: { type: integer }
+        state: { type: string }
+        blocked_by:
+          type: array
+          items: { type: integer }
+
+    LockChain:
+      type: object
+      properties:
+        holder: { $ref: '#/components/schemas/LockSession' }
+        blocked:
+          type: array
+          items: { $ref: '#/components/schemas/LockSession' }
+
+    Capabilities:
+      type: object
+      properties:
+        replication_configured: { type: boolean }
+        replication_reason: { type: string }
+        pg_stat_statements_installed: { type: boolean }
+        pg_stat_statements_known: { type: boolean }
+        pg_stat_statements_hint: { type: string }

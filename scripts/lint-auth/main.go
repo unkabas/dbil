@@ -25,8 +25,10 @@ import (
 // outside auth.RequireAuth. Add new entries deliberately, with reviewer
 // awareness that this is the auth bypass list.
 var unauthedRoutes = map[string]bool{
-	"/healthz":        true,
-	"/api/auth/login": true,
+	"/healthz":          true,
+	"/api/auth/login":   true,
+	"/api/openapi.yaml": true,
+	"/api/docs":         true,
 }
 
 const handlersFile = "internal/server/handlers/handlers.go"

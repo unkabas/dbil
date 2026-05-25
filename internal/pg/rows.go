@@ -7,11 +7,14 @@ import (
 	"strings"
 )
 
-// RowsResponse is the wire shape returned by the rows endpoint.
+// RowsResponse is the wire shape returned by the rows endpoint. When
+// EstimatedTotalExact is true, EstimatedTotal is the actual row count for
+// the (filtered) result — not a pg_class.reltuples estimate.
 type RowsResponse struct {
-	Columns        []ColumnRef `json:"columns"`
-	Rows           [][]any     `json:"rows"`
-	EstimatedTotal int64       `json:"estimated_total"`
+	Columns             []ColumnRef `json:"columns"`
+	Rows                [][]any     `json:"rows"`
+	EstimatedTotal      int64       `json:"estimated_total"`
+	EstimatedTotalExact bool        `json:"estimated_total_exact"`
 }
 
 // ColumnRef carries minimal column info for the data grid header.

@@ -187,7 +187,17 @@ func FetchRows(ctx context.Context, pool postgres.Pool, schema, name string, pag
 	if rows == nil {
 		rows = [][]any{}
 	}
-	return &RowsResponse{Columns: resultColumns(res), Rows: rows, EstimatedTotal: estimated}, nil
+	// A short page means we read past the end of the relation. The true
+	// total is offset+len(rows), which is more accurate than reltuples (the
+	// estimate is often stale, sometimes -1 for never-analyzed tables).
+	// The lone exception is an empty page after a non-zero offset: we know
+	// total < offset but not the exact value — fall back to the estimate.
+	exact := false
+	if len(rows) < pageSize && (len(rows) > 0 || offset == 0) {
+		estimated = int64(offset + len(rows))
+		exact = true
+	}
+	return &RowsResponse{Columns: resultColumns(res), Rows: rows, EstimatedTotal: estimated, EstimatedTotalExact: exact}, nil
 }
 
 func quoteTable(schema, name string) (string, string, error) {

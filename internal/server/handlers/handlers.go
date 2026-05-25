@@ -43,6 +43,8 @@ func Mount(d Deps) chi.Router {
 	// --- Unauthed (allowlisted in scripts/lint-auth) ---
 	r.Get("/healthz", Healthz(d.Version))
 	r.Post("/api/auth/login", LoginHandler(d.Auth))
+	r.Get("/api/openapi.yaml", OpenAPIHandler())
+	r.Get("/api/docs", SwaggerUIHandler())
 
 	// --- Authed: every handler under this group is protected by RequireAuth ---
 	r.Group(func(p chi.Router) {

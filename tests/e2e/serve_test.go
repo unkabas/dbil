@@ -142,6 +142,62 @@ func TestE2E_ServeBootstrapsEmptyDataDir(t *testing.T) {
 	}
 }
 
+// TestE2E_OpenAPIDocsServedUnauthed makes sure clients can fetch the spec
+// and the Swagger UI without first logging in — they're the contract the
+// rest of the API hides behind, so they have to be reachable cold.
+func TestE2E_OpenAPIDocsServedUnauthed(t *testing.T) {
+	bin := buildBinary(t)
+	dataDir := t.TempDir()
+	port := freePort(t)
+
+	cmd := exec.Command(bin, "serve")
+	cmd.Env = []string{
+		"DBIL_DATA_DIR=" + dataDir,
+		"DBIL_PORT=" + strconv.Itoa(port),
+		"PATH=" + os.Getenv("PATH"),
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = io.Discard
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start serve: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = cmd.Process.Signal(syscall.SIGTERM)
+		_, _ = cmd.Process.Wait()
+	})
+	base := fmt.Sprintf("http://127.0.0.1:%d", port)
+	if err := waitHealthz(base, 5*time.Second); err != nil {
+		t.Fatalf("not healthy: %v\nstderr: %s", err, stderr.String())
+	}
+
+	resp, err := http.Get(base + "/api/openapi.yaml")
+	if err != nil {
+		t.Fatalf("openapi: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("openapi status: %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !bytes.Contains(body, []byte("openapi: 3.")) || !bytes.Contains(body, []byte("/api/connections")) {
+		t.Fatalf("openapi body does not look like the spec: %q", string(body[:min(160, len(body))]))
+	}
+
+	resp, err = http.Get(base + "/api/docs")
+	if err != nil {
+		t.Fatalf("docs: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("docs status: %d", resp.StatusCode)
+	}
+	body, _ = io.ReadAll(resp.Body)
+	if !bytes.Contains(body, []byte("swagger-ui")) {
+		t.Fatalf("docs body missing swagger-ui marker: %q", string(body[:min(160, len(body))]))
+	}
+}
+
 // Helpers — kept in serve_test.go so they live with the e2e they're built for.
 
 func readInitialPassword(t *testing.T, dataDir string) string {

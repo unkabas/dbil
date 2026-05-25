@@ -13,8 +13,10 @@ import (
 )
 
 // OverviewHandler — GET /api/connections/{id}/observ/overview?since=<unix_ms>
-// Returns the recorded overview samples. Without ?since, returns the last
-// five minutes.
+// Returns the recorded overview samples plus a capabilities block describing
+// which observability features the target Postgres actually supports
+// (replication configured? pg_stat_statements installed?). The UI uses those
+// flags to render explicit "not configured" hints instead of empty tiles.
 func OverviewHandler(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseID(w, r)
@@ -46,13 +48,33 @@ func OverviewHandler(d Deps) http.HandlerFunc {
 			}
 			out[i] = entry
 		}
+		caps := capabilitiesFor(r, d, id)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"samples": out})
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"samples":      out,
+			"capabilities": caps,
+		})
 	}
 }
 
+// capabilitiesFor opens (or reuses) the connection pool and probes the
+// target Postgres for optional features used by the observability UI. The
+// open is best-effort: if the connection requires a passphrase the client
+// didn't send, we return an empty Capabilities and the UI shows generic
+// fallback messaging.
+func capabilitiesFor(r *http.Request, d Deps, id int64) Capabilities {
+	passphrase := r.Header.Get("X-Connection-Passphrase")
+	pool, err := d.Manager.OpenByID(r.Context(), id, passphrase)
+	if err != nil {
+		return Capabilities{}
+	}
+	return fetchCapabilities(r.Context(), id, pool)
+}
+
 // SlowQueriesHandler — GET /api/connections/{id}/observ/slow
-// Returns the latest pg_stat_statements snapshot for the connection.
+// Returns the latest pg_stat_statements snapshot for the connection plus the
+// capabilities block (so the UI can render an install hint when the
+// extension is missing instead of a blank empty state).
 func SlowQueriesHandler(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseID(w, r)
@@ -81,10 +103,12 @@ func SlowQueriesHandler(d Deps) http.HandlerFunc {
 		if !takenAt.IsZero() {
 			takenAtMs = takenAt.UnixMilli()
 		}
+		caps := capabilitiesFor(r, d, id)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"taken_at_ms": takenAtMs,
-			"rows":        out,
+			"taken_at_ms":  takenAtMs,
+			"rows":         out,
+			"capabilities": caps,
 		})
 	}
 }

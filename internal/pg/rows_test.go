@@ -10,6 +10,12 @@ import (
 )
 
 func TestFetchRows_HappyPath(t *testing.T) {
+	// A page that's filled to pageSize doesn't pin the total — we report
+	// the reltuples estimate (and EstimatedTotalExact stays false).
+	rows := make([][]any, 50)
+	for i := range rows {
+		rows[i] = []any{int64(i + 1), "u@x"}
+	}
 	pool := &fakePool{results: map[string]*postgres.Result{
 		"SELECT c.reltuples": {Rows: [][]any{{int64(12345)}}},
 		`SELECT * FROM "public"."users"`: {
@@ -17,10 +23,7 @@ func TestFetchRows_HappyPath(t *testing.T) {
 				{Name: "id", TypeName: "int8"},
 				{Name: "email", TypeName: "text"},
 			},
-			Rows: [][]any{
-				{int64(1), "a@b"},
-				{int64(2), "c@d"},
-			},
+			Rows: rows,
 		},
 	}}
 
@@ -28,11 +31,11 @@ func TestFetchRows_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.EstimatedTotal != 12345 {
-		t.Fatalf("estimated_total: %d", resp.EstimatedTotal)
+	if resp.EstimatedTotal != 12345 || resp.EstimatedTotalExact {
+		t.Fatalf("estimated_total: %d exact:%v (want 12345, !exact)", resp.EstimatedTotal, resp.EstimatedTotalExact)
 	}
-	if len(resp.Rows) != 2 || len(resp.Columns) != 2 {
-		t.Fatalf("payload: %+v", resp)
+	if len(resp.Rows) != 50 || len(resp.Columns) != 2 {
+		t.Fatalf("payload: %d rows %d cols", len(resp.Rows), len(resp.Columns))
 	}
 	if resp.Columns[0].Name != "id" || resp.Columns[0].TypeName != "int8" {
 		t.Fatalf("col: %+v", resp.Columns[0])
@@ -87,7 +90,8 @@ func TestFetchRows_NegativePageBecomesZero(t *testing.T) {
 }
 
 func TestFetchRows_EstimateMinusOneOnMissingRelation(t *testing.T) {
-	// pg_class lookup returns no rows.
+	// pg_class lookup returns no rows. We received zero rows on the first
+	// page, which pins the exact total at 0 — better than -1 in the UI.
 	pool := &fakePool{results: map[string]*postgres.Result{
 		"SELECT c.reltuples":             {Rows: [][]any{}},
 		`SELECT * FROM "public"."users"`: {Rows: [][]any{}},
@@ -96,8 +100,27 @@ func TestFetchRows_EstimateMinusOneOnMissingRelation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.EstimatedTotal != -1 {
-		t.Fatalf("estimated_total: %d (want -1)", resp.EstimatedTotal)
+	if resp.EstimatedTotal != 0 || !resp.EstimatedTotalExact {
+		t.Fatalf("estimated_total: %d exact:%v (want 0 exact)", resp.EstimatedTotal, resp.EstimatedTotalExact)
+	}
+}
+
+func TestFetchRows_ShortPageMarksExact(t *testing.T) {
+	// reltuples claims 12345 but we only got 3 rows on page 0 → exact total
+	// is 3 and we should report that, not the stale estimate.
+	pool := &fakePool{results: map[string]*postgres.Result{
+		"SELECT c.reltuples": {Rows: [][]any{{int64(12345)}}},
+		`SELECT * FROM "public"."tiny"`: {
+			Columns: []postgres.ColumnDef{{Name: "id", TypeName: "int8"}},
+			Rows:    [][]any{{int64(1)}, {int64(2)}, {int64(3)}},
+		},
+	}}
+	resp, err := FetchRows(context.Background(), pool, "public", "tiny", 0, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp.EstimatedTotalExact {
+		t.Fatalf("short page should mark exact: %+v", resp)
 	}
 }
 
