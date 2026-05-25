@@ -35,13 +35,23 @@ export interface LockChain {
   blocked: LockSession[]
 }
 
+export interface ObservCapabilities {
+  replication_configured: boolean
+  replication_reason?: string
+  pg_stat_statements_installed: boolean
+  pg_stat_statements_known: boolean
+  pg_stat_statements_hint?: string
+}
+
 export interface OverviewResponse {
   samples: OverviewSample[]
+  capabilities?: ObservCapabilities
 }
 
 export interface SlowResponse {
   taken_at_ms: number
   rows: SlowRow[]
+  capabilities?: ObservCapabilities
 }
 
 export interface LocksResponse {

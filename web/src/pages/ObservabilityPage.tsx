@@ -31,6 +31,11 @@ function ObservabilityBody() {
   const locks = useLocks(conn.id)
 
   const samples = overview.data?.samples ?? []
+  const caps = overview.data?.capabilities ?? slow.data?.capabilities
+  const replicationOK = caps?.replication_configured ?? true
+  const replicationReason = caps?.replication_reason ?? 'no replica'
+  const pgssInstalled = caps?.pg_stat_statements_installed ?? true
+  const pgssHint = caps?.pg_stat_statements_hint
   const latest = samples.length > 0 ? samples[samples.length - 1] : undefined
   const prev = samples.length > 1 ? samples[samples.length - 2] : undefined
   const fresh = !!latest && Date.now() - latest.ts_ms < 30_000
@@ -99,6 +104,8 @@ function ObservabilityBody() {
             data={samples.map((s) => s.tps)}
             accent="var(--c-violet)"
             fresh={fresh}
+            tooltip="Transactions per second: rate of committed + rolled-back transactions across the cluster. Computed as Δ(xact_commit + xact_rollback) ÷ Δt between collector ticks."
+            source="pg_stat_database"
           />
           <MetricTile
             label="Cache hit"
@@ -108,6 +115,8 @@ function ObservabilityBody() {
             data={samples.map((s) => s.cache_hit * 100)}
             accent="var(--c-mint)"
             fresh={fresh}
+            tooltip="Share of block reads served from shared_buffers: blks_hit ÷ (blks_hit + blks_read). 99%+ is healthy on a warm OLTP database; sustained <95% suggests undersized buffers."
+            source="pg_stat_database"
           />
           <MetricTile
             label="Sessions"
@@ -117,18 +126,27 @@ function ObservabilityBody() {
             data={samples.map((s) => s.active_conns + s.idle_conns)}
             accent="var(--c-cyan)"
             fresh={fresh}
+            tooltip="Active = currently executing a query. Idle = connected but not running anything. A high idle count typically points at a misconfigured connection pool."
+            source="pg_stat_activity"
           />
           <MetricTile
             label="Replication lag"
             value={
-              latest && latest.rep_lag_ms !== undefined ? fmtNum(latest.rep_lag_ms, 0) : '—'
+              !replicationOK
+                ? '—'
+                : latest && latest.rep_lag_ms !== undefined
+                  ? fmtNum(latest.rep_lag_ms, 0)
+                  : '—'
             }
-            unit={latest && latest.rep_lag_ms !== undefined ? 'ms' : ''}
-            hint={latest && latest.rep_lag_ms === undefined ? 'no replica' : undefined}
+            unit={replicationOK && latest && latest.rep_lag_ms !== undefined ? 'ms' : ''}
             delta={null}
             data={samples.map((s) => s.rep_lag_ms ?? 0)}
             accent="var(--c-amber)"
             fresh={fresh}
+            tooltip="write_lag from pg_stat_replication: how far each standby is behind the primary's write position. Meaningful only when at least one standby is connected."
+            source="pg_stat_replication"
+            status={replicationOK ? 'ok' : 'unavailable'}
+            statusReason={replicationOK ? undefined : `Not configured — ${replicationReason}`}
           />
         </div>
 
@@ -137,6 +155,8 @@ function ObservabilityBody() {
             rows={slow.data?.rows ?? []}
             takenAtMs={slow.data?.taken_at_ms ?? 0}
             loading={slow.isLoading}
+            hasPgStat={pgssInstalled}
+            installHint={pgssHint}
           />
         </div>
 

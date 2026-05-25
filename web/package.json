@@ -14,6 +14,7 @@
     "@codemirror/view": "^6.36.0",
     "@tanstack/react-query": "^5.62.0",
     "@tanstack/react-table": "^8.20.5",
+    "@tanstack/react-virtual": "^3.13.26",
     "@uiw/codemirror-theme-darcula": "^4.25.9",
     "@uiw/react-codemirror": "^4.23.7",
     "react": "^18.3.1",

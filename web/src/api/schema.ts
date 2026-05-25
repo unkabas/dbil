@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { apiFetch, getStoredToken } from './client'
 
 export interface FKRef {
   table: string
   column: string
+  on_delete?: string
+  on_update?: string
 }
 
 export interface SchemaColumn {
@@ -13,14 +15,31 @@ export interface SchemaColumn {
   pk: boolean
   unique: boolean
   fk?: FKRef
+  default?: string
+  comment?: string
+}
+
+export interface SchemaIndex {
+  name: string
+  columns: string[]
+  unique: boolean
+  primary: boolean
+  size_bytes: number
+  method: string
 }
 
 export interface SchemaTable {
   schema: string
   name: string
   rows: number
+  rows_estimated: boolean
+  rows_exact?: number
   size_bytes: number
+  kind: string
+  has_index: boolean
+  last_analyze?: string
   columns: SchemaColumn[]
+  indexes?: SchemaIndex[]
 }
 
 export interface SchemaNamespace {
@@ -43,6 +62,7 @@ export interface RowsResponse {
   columns: RowsColumn[]
   rows: CellValue[][]
   estimated_total: number
+  estimated_total_exact: boolean
 }
 
 export interface TableFilter {
@@ -95,11 +115,57 @@ export function useTableRows(
           method: 'POST',
           body: { page, page_size: pageSize, filters },
         })
-        return { columns: resp.columns, rows: resp.rows, estimated_total: resp.filtered_total } satisfies RowsResponse
+        return {
+          columns: resp.columns,
+          rows: resp.rows,
+          estimated_total: resp.filtered_total,
+          estimated_total_exact: true,
+        } satisfies RowsResponse
       }
       return apiFetch<RowsResponse>(`${base}/rows?page=${page}&page_size=${pageSize}`)
     },
     staleTime: 0,
+  })
+}
+
+// useInfiniteTableRows powers the DataPage virtualized scroll: each page is
+// `pageSize` rows from /rows (or /rows/search when filters are set). The
+// query advances to the next page until the server returns a short batch.
+export function useInfiniteTableRows(
+  connID: number | null,
+  schema: string | null,
+  name: string | null,
+  pageSize = 200,
+  filters: TableFilter[] = [],
+) {
+  const hasFilters = filters.some((f) => f.values.length > 0)
+  return useInfiniteQuery({
+    queryKey: ['table-rows-inf', connID, schema, name, pageSize, filters],
+    enabled: connID !== null && connID !== 0 && !!schema && !!name,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const base = `/api/connections/${connID}/table/${encodeURIComponent(schema!)}/${encodeURIComponent(name!)}`
+      if (hasFilters) {
+        const resp = await apiFetch<SearchRowsResponse>(`${base}/rows/search`, {
+          method: 'POST',
+          body: { page: pageParam, page_size: pageSize, filters },
+        })
+        return {
+          columns: resp.columns,
+          rows: resp.rows,
+          estimated_total: resp.filtered_total,
+          estimated_total_exact: true,
+        } satisfies RowsResponse
+      }
+      return apiFetch<RowsResponse>(`${base}/rows?page=${pageParam}&page_size=${pageSize}`)
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.rows.length < pageSize) return undefined
+      return allPages.length
+    },
+    staleTime: 0,
+    // Keep a rolling window so multi-million-row tables don't blow up memory.
+    maxPages: 100,
   })
 }
 

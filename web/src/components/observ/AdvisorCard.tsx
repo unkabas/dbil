@@ -50,6 +50,13 @@ export default function AdvisorCard({ connID }: Props) {
               ? 'no hints'
               : `${missing.length} missing · ${unused.length} unused`}
         </span>
+        <span
+          className="mono"
+          style={{ fontSize: 10.5, color: 'var(--fg-5)', letterSpacing: '0.02em' }}
+          title="Computed from pg_stat_user_tables (seq/idx scan counters) and pg_stat_user_indexes (idx_scan counts)"
+        >
+          · pg_stat_user_tables + pg_stat_user_indexes
+        </span>
       </div>
 
       {error ? (

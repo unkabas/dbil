@@ -7,11 +7,12 @@ interface Props {
   takenAtMs: number
   loading?: boolean
   hasPgStat?: boolean
+  installHint?: string
 }
 
 type SortKey = 'total_ms' | 'mean_ms' | 'p95_ms' | 'p99_ms' | 'calls'
 
-export default function SlowQueriesTable({ rows, takenAtMs, loading, hasPgStat = true }: Props) {
+export default function SlowQueriesTable({ rows, takenAtMs, loading, hasPgStat = true, installHint }: Props) {
   const [sort, setSort] = useState<SortKey>('total_ms')
   const sorted = [...rows].sort((a, b) => b[sort] - a[sort])
 
@@ -63,8 +64,22 @@ export default function SlowQueriesTable({ rows, takenAtMs, loading, hasPgStat =
         </button>
       </div>
 
+      <div
+        style={{
+          padding: '6px 16px',
+          color: 'var(--fg-5)',
+          fontSize: 10.5,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          fontFamily: 'var(--font-mono)',
+          borderBottom: '1px solid var(--line-1)',
+        }}
+      >
+        Source: pg_stat_statements
+      </div>
+
       {!hasPgStat ? (
-        <PgStatStatementsMissingBanner />
+        <PgStatStatementsMissingBanner hint={installHint} />
       ) : loading && rows.length === 0 ? (
         <Empty>Loading…</Empty>
       ) : rows.length === 0 ? (
@@ -107,7 +122,7 @@ export default function SlowQueriesTable({ rows, takenAtMs, loading, hasPgStat =
   )
 }
 
-function PgStatStatementsMissingBanner() {
+function PgStatStatementsMissingBanner({ hint }: { hint?: string }) {
   return (
     <div style={{ padding: 16, color: 'var(--fg-3)', fontSize: 12.5 }}>
       <div style={{ fontWeight: 500, color: 'var(--warn)', marginBottom: 8 }}>
@@ -115,8 +130,8 @@ function PgStatStatementsMissingBanner() {
         pg_stat_statements is not installed on this database.
       </div>
       <p style={{ margin: 0, marginBottom: 10 }}>
-        Add it to <code className="mono" style={{ color: 'var(--fg-1)' }}>shared_preload_libraries</code> and create
-        the extension, then slow queries will start populating on the next tick.
+        {hint ??
+          'Add it to shared_preload_libraries and create the extension, then slow queries will start populating on the next tick.'}
       </p>
       <pre
         className="mono sql"

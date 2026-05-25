@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShellContext } from '../shell/context'
-import { useSchema, type SchemaTable, type SchemaColumn } from '../api/schema'
+import { useSchema, type SchemaTable, type SchemaColumn, type SchemaIndex } from '../api/schema'
 import { ApiError } from '../api/client'
 import Icon from '../components/Icon'
 
@@ -27,28 +27,60 @@ export default function SchemaPage() {
   const { activeConnID, activeConn } = useShellContext()
   const { data, isLoading, error } = useSchema(activeConnID)
 
-  const positioned = useMemo<PositionedTable[]>(() => {
+  const flatTables = useMemo<SchemaTable[]>(() => {
     if (!data) return []
     const flat: SchemaTable[] = []
     for (const s of data.schemas) flat.push(...s.tables)
-    return flat.map((t, i) => {
-      const col = i % COLS
-      const row = Math.floor(i / COLS)
-      const cardH = HEADER_H + Math.max(1, t.columns.length) * ROW_H
+    return flat
+  }, [data])
+
+  const [zoom, setZoom] = useState(1)
+  const zoomRef = useRef(zoom)
+  useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
+
+  const [positions, setPositions, resetPositions] = useTablePositions(activeConnID, flatTables)
+
+  const positioned = useMemo<PositionedTable[]>(() => {
+    return flatTables.map((t, i) => {
+      const k = `${t.schema}.${t.name}`
+      const stored = positions[k]
       return {
         ...t,
-        pos: {
-          x: CANVAS_PAD + col * (TABLE_W + COL_GAP),
-          y: CANVAS_PAD + row * (cardH > 200 ? cardH + ROW_GAP / 2 : 220 + ROW_GAP),
-        },
+        pos: stored ?? defaultGridPos(i, t.columns.length),
       }
     })
-  }, [data])
+  }, [flatTables, positions])
+
+  const movePosition = useCallback(
+    (key: string, dx: number, dy: number) => {
+      setPositions((prev) => {
+        const idx = flatTables.findIndex((t) => `${t.schema}.${t.name}` === key)
+        const base = prev[key] ?? defaultGridPos(idx, flatTables[idx]?.columns.length ?? 0)
+        return {
+          ...prev,
+          [key]: { x: Math.max(0, base.x + dx), y: Math.max(0, base.y + dy) },
+        }
+      })
+    },
+    [flatTables, setPositions],
+  )
+
+  const snapPosition = useCallback(
+    (key: string) => {
+      setPositions((prev) => {
+        const p = prev[key]
+        if (!p) return prev
+        return { ...prev, [key]: { x: Math.round(p.x / 10) * 10, y: Math.round(p.y / 10) * 10 } }
+      })
+    },
+    [setPositions],
+  )
 
   const [focused, setFocused] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
-  const [zoom, setZoom] = useState(1)
 
   const focusedKey = focused ?? (positioned[0] ? keyOf(positioned[0]) : null)
 
@@ -97,14 +129,25 @@ export default function SchemaPage() {
     return set
   }, [hovered, focusedKey, edges])
 
-  const totalRows = positioned.reduce((a, t) => a + t.rows, 0)
+  const totalRows = positioned.reduce((a, t) => a + Math.max(0, displayRows(t)), 0)
+  const anyEstimated = positioned.some((t) => t.rows_estimated && t.rows >= 0)
   const totalCols = positioned.reduce((a, t) => a + t.columns.length, 0)
   const schemas = uniqueSchemas(filtered)
 
-  const canvasH = Math.max(
-    640,
-    CANVAS_PAD * 2 + Math.ceil(positioned.length / COLS) * (220 + ROW_GAP),
-  )
+  const canvasH = useMemo(() => {
+    let maxY = 0
+    for (const t of positioned) {
+      const cardH = HEADER_H + Math.max(1, t.columns.length) * ROW_H
+      maxY = Math.max(maxY, t.pos.y + cardH)
+    }
+    return Math.max(640, maxY + CANVAS_PAD)
+  }, [positioned])
+
+  const canvasW = useMemo(() => {
+    let maxX = CANVAS_PAD * 2 + COLS * TABLE_W + (COLS - 1) * COL_GAP
+    for (const t of positioned) maxX = Math.max(maxX, t.pos.x + TABLE_W + CANVAS_PAD)
+    return maxX
+  }, [positioned])
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 320px', height: '100%', minHeight: 0 }}>
@@ -223,8 +266,8 @@ export default function SchemaPage() {
                       >
                         {t.name}
                       </span>
-                      <span className="mono tnum" style={{ fontSize: 10.5, color: 'var(--fg-4)' }}>
-                        {fmtCount(t.rows)}
+                      <span className="mono tnum" style={{ fontSize: 10.5, color: 'var(--fg-4)' }} title={rowsTooltip(t)}>
+                        {rowsLabel(t)}
                       </span>
                     </button>
                   )
@@ -288,9 +331,33 @@ export default function SchemaPage() {
           <span style={{ fontSize: 12, color: 'var(--fg-4)' }}>·</span>
           <span className="tnum" style={{ fontSize: 12, color: 'var(--fg-3)' }}>
             {activeConn?.alias ?? '—'} · {positioned.length} tables · {totalCols} columns ·{' '}
+            {anyEstimated ? '~' : ''}
             {fmtCount(totalRows)} rows
           </span>
           <span style={{ flex: 1 }} />
+          <button
+            onClick={resetPositions}
+            disabled={Object.keys(positions).length === 0}
+            title="Reset table positions to the default grid"
+            style={{
+              height: 28,
+              padding: '0 10px',
+              background: 'var(--bg-2)',
+              border: '1px solid var(--line-2)',
+              borderRadius: 7,
+              color: 'var(--fg-2)',
+              fontSize: 11,
+              cursor: Object.keys(positions).length === 0 ? 'default' : 'pointer',
+              opacity: Object.keys(positions).length === 0 ? 0.4 : 1,
+              fontFamily: 'inherit',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Icon name="refresh" size={11} />
+            Reset layout
+          </button>
           <div
             style={{
               display: 'flex',
@@ -341,14 +408,14 @@ export default function SchemaPage() {
         <div
           style={{
             position: 'relative',
-            width: CANVAS_PAD * 2 + COLS * TABLE_W + (COLS - 1) * COL_GAP,
+            width: canvasW,
             height: canvasH,
             transform: `scale(${zoom})`,
             transformOrigin: '0 0',
             margin: '0 24px 24px',
           }}
         >
-          <ErEdges tables={positioned} edges={edges} highlightSet={highlightSet} />
+          <ErEdges tables={positioned} edges={edges} highlightSet={highlightSet} canvasW={canvasW} canvasH={canvasH} />
 
           {positioned.map((t) => (
             <TableNode
@@ -360,6 +427,9 @@ export default function SchemaPage() {
               onClick={() => setFocused(keyOf(t))}
               onMouseEnter={() => setHovered(keyOf(t))}
               onMouseLeave={() => setHovered(null)}
+              onDrag={(dx, dy) => movePosition(keyOf(t), dx, dy)}
+              onDragEnd={() => snapPosition(keyOf(t))}
+              zoomRef={zoomRef}
             />
           ))}
         </div>
@@ -396,9 +466,36 @@ function uniqueSchemas(tables: SchemaTable[]): string[] {
 }
 
 function fmtCount(n: number): string {
+  if (n < 0) return '?'
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
   if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'k'
   return String(n)
+}
+
+// displayRows picks the best number to render for a SchemaTable. Backend
+// already populates `rows` with the exact count when it has one; this helper
+// exists so callers can keep using the field directly while we also tolerate
+// servers that only fill `rows_exact`.
+function displayRows(t: SchemaTable): number {
+  if (typeof t.rows_exact === 'number') return t.rows_exact
+  return t.rows
+}
+
+// rowsLabel formats a row count with a tilde prefix when the backend marked
+// it as an estimate (pg_class.reltuples). For never-analyzed tables (rows<0)
+// it returns "—".
+function rowsLabel(t: SchemaTable): string {
+  const n = displayRows(t)
+  if (n < 0) return '—'
+  return (t.rows_estimated ? '~' : '') + fmtCount(n)
+}
+
+function rowsTooltip(t: SchemaTable): string {
+  const n = displayRows(t)
+  if (n < 0) return 'Never analyzed — run ANALYZE to populate statistics.'
+  if (!t.rows_estimated) return `Exact count (${n.toLocaleString('en-US')})`
+  const fresh = t.last_analyze ? ` Last analyzed ${t.last_analyze}.` : ''
+  return `Estimate from pg_class.reltuples.${fresh} Run ANALYZE for a fresh estimate.`
 }
 
 function fmtBytes(b: number): string {
@@ -458,15 +555,17 @@ function ErEdges({
   tables,
   edges,
   highlightSet,
+  canvasW,
+  canvasH,
 }: {
   tables: PositionedTable[]
   edges: Array<{ fromKey: string; fromCol: string; toKey: string; toCol: string }>
   highlightSet: Set<string> | null
+  canvasW: number
+  canvasH: number
 }) {
-  const w = CANVAS_PAD * 2 + COLS * TABLE_W + (COLS - 1) * COL_GAP
-  const h = Math.max(640, CANVAS_PAD * 2 + Math.ceil(tables.length / COLS) * (220 + ROW_GAP))
   return (
-    <svg width={w} height={h} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <svg width={canvasW} height={canvasH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <defs>
         <marker id="arrow-soft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M0,0 L10,5 L0,10 z" fill="var(--fg-4)" />
@@ -523,6 +622,9 @@ function TableNode({
   onClick,
   onMouseEnter,
   onMouseLeave,
+  onDrag,
+  onDragEnd,
+  zoomRef,
 }: {
   t: PositionedTable
   focused: boolean
@@ -531,10 +633,65 @@ function TableNode({
   onClick(): void
   onMouseEnter(): void
   onMouseLeave(): void
+  onDrag(dx: number, dy: number): void
+  onDragEnd(): void
+  zoomRef: React.MutableRefObject<number>
 }) {
+  const dragging = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  const rafPending = useRef(false)
+  const pendingDelta = useRef({ dx: 0, dy: 0 })
+
+  const onPointerDown = useCallback(
+    (e: React.MouseEvent) => {
+      // Only drag with primary button on the header — let column-row clicks
+      // through so users can still interact with the inner content.
+      if (e.button !== 0) return
+      dragging.current = { x: e.clientX, y: e.clientY, moved: false }
+      const flush = () => {
+        rafPending.current = false
+        if (pendingDelta.current.dx === 0 && pendingDelta.current.dy === 0) return
+        onDrag(pendingDelta.current.dx, pendingDelta.current.dy)
+        pendingDelta.current = { dx: 0, dy: 0 }
+      }
+      const onMove = (ev: MouseEvent) => {
+        const cur = dragging.current
+        if (!cur) return
+        const z = zoomRef.current || 1
+        const dx = (ev.clientX - cur.x) / z
+        const dy = (ev.clientY - cur.y) / z
+        if (!cur.moved && Math.abs(dx) + Math.abs(dy) < 3) return
+        cur.moved = true
+        cur.x = ev.clientX
+        cur.y = ev.clientY
+        pendingDelta.current.dx += dx
+        pendingDelta.current.dy += dy
+        if (!rafPending.current) {
+          rafPending.current = true
+          requestAnimationFrame(flush)
+        }
+      }
+      const onUp = () => {
+        const cur = dragging.current
+        dragging.current = null
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        if (cur?.moved) onDragEnd()
+      }
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+    },
+    [onDrag, onDragEnd, zoomRef],
+  )
+
+  const handleClick = useCallback(() => {
+    // Suppress click if we just finished a drag (mouseup already fired).
+    if (dragging.current === null && !rafPending.current) onClick()
+    else if (!dragging.current) onClick()
+  }, [onClick])
+
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       style={{
@@ -552,11 +709,12 @@ function TableNode({
             : 'var(--shadow-1)',
         opacity: dimmed ? 0.4 : 1,
         transition: 'opacity 180ms, border-color 180ms, box-shadow 180ms',
-        cursor: 'pointer',
         overflow: 'hidden',
+        userSelect: 'none',
       }}
     >
       <div
+        onMouseDown={onPointerDown}
         style={{
           height: HEADER_H,
           padding: '10px 12px',
@@ -565,6 +723,7 @@ function TableNode({
           alignItems: 'center',
           gap: 8,
           background: focused ? 'linear-gradient(to bottom, var(--accent-mute), transparent)' : 'transparent',
+          cursor: 'grab',
         }}
       >
         <Icon name="table" size={12} style={{ color: focused ? 'var(--accent)' : 'var(--fg-3)' }} />
@@ -589,8 +748,8 @@ function TableNode({
           </span>
         )}
         <span style={{ flex: 1 }} />
-        <span className="mono tnum" style={{ fontSize: 10.5, color: 'var(--fg-4)' }}>
-          {fmtCount(t.rows)}
+        <span className="mono tnum" style={{ fontSize: 10.5, color: 'var(--fg-4)' }} title={rowsTooltip(t)}>
+          {rowsLabel(t)}
         </span>
       </div>
       <div>
@@ -680,15 +839,22 @@ function TableDetail({
           {t.name}
         </h2>
         <div style={{ display: 'flex', gap: 18, marginTop: 12 }}>
-          <Stat label="Rows" value={t.rows.toLocaleString('en-US')} />
+          <Stat
+            label="Rows"
+            value={rowsStatValue(t)}
+            tooltip={rowsTooltip(t)}
+          />
           <Stat label="Size" value={fmtBytes(t.size_bytes)} />
           <Stat label="Columns" value={String(t.columns.length)} />
+          {t.indexes && t.indexes.length > 0 && (
+            <Stat label="Indexes" value={String(t.indexes.length)} />
+          )}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
           <a
             className="btn-pri"
             style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}
-            href={`/data/${t.schema}/${t.name}`}
+            href={`/data/${encodeURIComponent(t.schema)}/${encodeURIComponent(t.name)}`}
           >
             <Icon name="data" size={12} /> Browse data
           </a>
@@ -700,33 +866,7 @@ function TableDetail({
 
       <Section title="Columns" count={t.columns.length}>
         {t.columns.map((c) => (
-          <div
-            key={c.name}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '14px 1fr auto',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 18px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11.5,
-            }}
-          >
-            <span style={{ display: 'inline-flex', justifyContent: 'center' }}>
-              {c.pk ? (
-                <Icon name="key" size={11} style={{ color: 'var(--c-amber)' }} />
-              ) : c.fk ? (
-                <Icon name="link" size={11} style={{ color: 'var(--c-cyan)' }} />
-              ) : (
-                <span style={{ width: 3, height: 3, borderRadius: 2, background: 'var(--fg-5)' }} />
-              )}
-            </span>
-            <span style={{ color: 'var(--fg-1)' }}>{c.name}</span>
-            <span style={{ color: 'var(--fg-3)' }}>
-              {c.type}
-              {c.nullable ? '?' : ''}
-            </span>
-          </div>
+          <ColumnRow key={c.name} c={c} />
         ))}
       </Section>
 
@@ -734,13 +874,31 @@ function TableDetail({
         {outgoing.length === 0 && incoming.length === 0 && (
           <div style={{ padding: '0 18px 8px', fontSize: 11.5, color: 'var(--fg-4)' }}>None.</div>
         )}
-        {outgoing.map((e, i) => (
-          <FkRow key={'o' + i} dir="out" leftCol={e.fromCol} rightCol={e.toKey.split('.')[1] + '.' + e.toCol} />
-        ))}
+        {outgoing.map((e, i) => {
+          const fkMeta = t.columns.find((col) => col.name === e.fromCol)?.fk
+          return (
+            <FkRow
+              key={'o' + i}
+              dir="out"
+              leftCol={e.fromCol}
+              rightCol={e.toKey.split('.')[1] + '.' + e.toCol}
+              onDelete={fkMeta?.on_delete}
+              onUpdate={fkMeta?.on_update}
+            />
+          )
+        })}
         {incoming.map((e, i) => (
           <FkRow key={'i' + i} dir="in" leftCol={e.fromKey.split('.')[1] + '.' + e.fromCol} rightCol={e.toCol} />
         ))}
       </Section>
+
+      {t.indexes && t.indexes.length > 0 && (
+        <Section title="Indexes" count={t.indexes.length}>
+          {t.indexes.map((ix) => (
+            <IndexRow key={ix.name} ix={ix} />
+          ))}
+        </Section>
+      )}
 
       <Section title="DDL" preview>
         <pre
@@ -758,6 +916,87 @@ function TableDetail({
           dangerouslySetInnerHTML={{ __html: buildDDL(t) }}
         />
       </Section>
+    </div>
+  )
+}
+
+function ColumnRow({ c }: { c: SchemaColumn }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '14px 1fr auto',
+        alignItems: 'center',
+        gap: 8,
+        padding: '6px 18px',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 11.5,
+      }}
+      title={c.comment || undefined}
+    >
+      <span style={{ display: 'inline-flex', justifyContent: 'center' }}>
+        {c.pk ? (
+          <Icon name="key" size={11} style={{ color: 'var(--c-amber)' }} />
+        ) : c.fk ? (
+          <Icon name="link" size={11} style={{ color: 'var(--c-cyan)' }} />
+        ) : (
+          <span style={{ width: 3, height: 3, borderRadius: 2, background: 'var(--fg-5)' }} />
+        )}
+      </span>
+      <span style={{ color: 'var(--fg-1)', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <span>{c.name}</span>
+        {(c.default || c.comment) && (
+          <span
+            style={{
+              fontSize: 10.5,
+              color: 'var(--fg-4)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {c.default && <span style={{ color: 'var(--c-violet)' }}>= {c.default}</span>}
+            {c.default && c.comment && <span style={{ color: 'var(--fg-5)' }}> · </span>}
+            {c.comment && <span style={{ fontStyle: 'italic' }}>{c.comment}</span>}
+          </span>
+        )}
+      </span>
+      <span style={{ color: 'var(--fg-3)' }}>
+        {c.type}
+        {c.nullable ? '?' : ''}
+      </span>
+    </div>
+  )
+}
+
+function IndexRow({ ix }: { ix: SchemaIndex }) {
+  return (
+    <div
+      style={{
+        padding: '6px 18px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontFamily: 'var(--font-mono)',
+        fontSize: 11.5,
+      }}
+    >
+      <Icon
+        name={ix.primary ? 'key' : 'link'}
+        size={11}
+        style={{ color: ix.primary ? 'var(--c-amber)' : ix.unique ? 'var(--c-cyan)' : 'var(--fg-4)' }}
+      />
+      <span style={{ color: 'var(--fg-1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {ix.name}
+        <span style={{ color: 'var(--fg-4)', marginLeft: 6 }}>({ix.columns.join(', ')})</span>
+      </span>
+      <span style={{ color: 'var(--fg-4)', fontSize: 10.5 }}>
+        {ix.method}
+        {ix.unique && !ix.primary ? ' · UNIQUE' : ''}
+      </span>
+      <span className="tnum" style={{ color: 'var(--fg-5)', fontSize: 10.5 }}>
+        {fmtBytes(ix.size_bytes)}
+      </span>
     </div>
   )
 }
@@ -798,9 +1037,9 @@ function Section({
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, tooltip }: { label: string; value: string; tooltip?: string }) {
   return (
-    <div>
+    <div title={tooltip}>
       <div
         style={{
           fontSize: 10,
@@ -819,7 +1058,30 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function FkRow({ dir, leftCol, rightCol }: { dir: 'in' | 'out'; leftCol: string; rightCol: string }) {
+function rowsStatValue(t: SchemaTable): string {
+  const n = displayRows(t)
+  if (n < 0) return '—'
+  const formatted = n.toLocaleString('en-US')
+  return t.rows_estimated ? '~' + formatted : formatted
+}
+
+function FkRow({
+  dir,
+  leftCol,
+  rightCol,
+  onDelete,
+  onUpdate,
+}: {
+  dir: 'in' | 'out'
+  leftCol: string
+  rightCol: string
+  onDelete?: string
+  onUpdate?: string
+}) {
+  const actions = [
+    onDelete && onDelete !== 'NO ACTION' ? `ON DELETE ${onDelete}` : null,
+    onUpdate && onUpdate !== 'NO ACTION' ? `ON UPDATE ${onUpdate}` : null,
+  ].filter(Boolean)
   return (
     <div
       style={{
@@ -829,6 +1091,7 @@ function FkRow({ dir, leftCol, rightCol }: { dir: 'in' | 'out'; leftCol: string;
         gap: 8,
         fontSize: 11.5,
         fontFamily: 'var(--font-mono)',
+        flexWrap: 'wrap',
       }}
     >
       {dir === 'out' ? (
@@ -845,6 +1108,9 @@ function FkRow({ dir, leftCol, rightCol }: { dir: 'in' | 'out'; leftCol: string;
           <span style={{ color: 'var(--fg-4)' }}>→ {rightCol}</span>
         </>
       )}
+      {actions.length > 0 && (
+        <span style={{ color: 'var(--c-amber)', fontSize: 10.5 }}>{actions.join(' · ')}</span>
+      )}
     </div>
   )
 }
@@ -855,6 +1121,7 @@ function buildDDL(t: SchemaTable): string {
       const parts = [
         `  <span class="id">${pad(c.name, 16)}</span>`,
         `<span class="kw">${c.type}</span>`,
+        c.default ? `<span class="kw">DEFAULT</span> <span class="lit">${escapeHTML(c.default)}</span>` : '',
         c.pk ? '<span class="kw">PRIMARY KEY</span>' : '',
         c.nullable ? '' : '<span class="kw">NOT NULL</span>',
         c.unique && !c.pk ? '<span class="kw">UNIQUE</span>' : '',
@@ -862,12 +1129,117 @@ function buildDDL(t: SchemaTable): string {
       return parts.join(' ')
     })
     .join(',\n')
-  return (
+  let ddl =
     `<span class="com">-- ${t.schema}.${t.name}</span>\n` +
     `<span class="kw">CREATE TABLE</span> <span class="id">${t.schema}.${t.name}</span> (\n` +
     cols +
     `\n);`
-  )
+  // FK constraints as ALTER TABLE so they stay readable in the column list.
+  for (const c of t.columns) {
+    if (!c.fk) continue
+    const acts = []
+    if (c.fk.on_delete && c.fk.on_delete !== 'NO ACTION') acts.push(`ON DELETE ${c.fk.on_delete}`)
+    if (c.fk.on_update && c.fk.on_update !== 'NO ACTION') acts.push(`ON UPDATE ${c.fk.on_update}`)
+    ddl +=
+      `\n<span class="kw">ALTER TABLE</span> <span class="id">${t.schema}.${t.name}</span>\n` +
+      `  <span class="kw">ADD FOREIGN KEY</span> (<span class="id">${c.name}</span>) ` +
+      `<span class="kw">REFERENCES</span> <span class="id">${c.fk.table}</span>(<span class="id">${c.fk.column}</span>)` +
+      (acts.length > 0 ? ' <span class="kw">' + acts.join(' ') + '</span>' : '') +
+      ';'
+  }
+  // Indexes as CREATE INDEX; skip those Postgres builds automatically for PK
+  // or UNIQUE constraints (those are already covered above).
+  if (t.indexes) {
+    for (const ix of t.indexes) {
+      if (ix.primary) continue
+      // Skip indexes that exactly match a single UNIQUE column constraint.
+      if (
+        ix.unique &&
+        ix.columns.length === 1 &&
+        t.columns.find((c) => c.name === ix.columns[0])?.unique
+      )
+        continue
+      ddl +=
+        `\n<span class="kw">CREATE ${ix.unique ? 'UNIQUE ' : ''}INDEX</span> ` +
+        `<span class="id">${ix.name}</span> <span class="kw">ON</span> ` +
+        `<span class="id">${t.schema}.${t.name}</span> ` +
+        `<span class="kw">USING</span> ${ix.method} ` +
+        `(${ix.columns.map((c) => `<span class="id">${escapeHTML(c)}</span>`).join(', ')});`
+    }
+  }
+  // Column comments.
+  for (const c of t.columns) {
+    if (!c.comment) continue
+    ddl +=
+      `\n<span class="kw">COMMENT ON COLUMN</span> <span class="id">${t.schema}.${t.name}.${c.name}</span> ` +
+      `<span class="kw">IS</span> <span class="lit">'${escapeHTML(c.comment.replace(/'/g, "''"))}'</span>;`
+  }
+  return ddl
+}
+
+function escapeHTML(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function defaultGridPos(idx: number, columnCount: number): { x: number; y: number } {
+  const col = idx % COLS
+  const row = Math.floor(idx / COLS)
+  const cardH = HEADER_H + Math.max(1, columnCount) * ROW_H
+  return {
+    x: CANVAS_PAD + col * (TABLE_W + COL_GAP),
+    y: CANVAS_PAD + row * (cardH > 200 ? cardH + ROW_GAP / 2 : 220 + ROW_GAP),
+  }
+}
+
+// useTablePositions stores per-table x/y in localStorage namespaced by
+// connection id. Stale keys (tables that no longer exist in the schema) are
+// pruned on every persist so the storage doesn't grow unbounded.
+function useTablePositions(
+  connID: number | null,
+  tables: SchemaTable[],
+): readonly [
+  Record<string, { x: number; y: number }>,
+  React.Dispatch<React.SetStateAction<Record<string, { x: number; y: number }>>>,
+  () => void,
+] {
+  const storageKey = connID ? `dbil:schema:positions:${connID}` : null
+  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({})
+
+  // Load whenever the connection changes.
+  useEffect(() => {
+    if (!storageKey) {
+      setPositions({})
+      return
+    }
+    try {
+      const raw = localStorage.getItem(storageKey)
+      setPositions(raw ? (JSON.parse(raw) as Record<string, { x: number; y: number }>) : {})
+    } catch {
+      setPositions({})
+    }
+  }, [storageKey])
+
+  // Debounced persist, with prune of stale keys.
+  useEffect(() => {
+    if (!storageKey) return
+    const handle = setTimeout(() => {
+      const known = new Set(tables.map((t) => `${t.schema}.${t.name}`))
+      const entries = Object.entries(positions).filter(([k]) => known.has(k))
+      if (entries.length === 0) {
+        localStorage.removeItem(storageKey)
+        return
+      }
+      localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(entries)))
+    }, 500)
+    return () => clearTimeout(handle)
+  }, [positions, tables, storageKey])
+
+  const reset = useCallback(() => {
+    if (storageKey) localStorage.removeItem(storageKey)
+    setPositions({})
+  }, [storageKey])
+
+  return [positions, setPositions, reset] as const
 }
 
 function pad(s: string, n: number): string {

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useShellContext } from '../shell/context'
 import {
   useSchema,
-  useTableRows,
+  useInfiniteTableRows,
   fetchDistinctValues,
   exportTable,
   type SchemaTable,
@@ -14,7 +15,8 @@ import {
 import { ApiError } from '../api/client'
 import Icon from '../components/Icon'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 200
+const ROW_HEIGHT = 30
 
 export default function DataPage() {
   const { activeConnID, activeConn } = useShellContext()
@@ -34,22 +36,27 @@ export default function DataPage() {
     return allTables[0]
   }, [allTables, schema, name])
 
-  const [page, setPage] = useState(0)
   const [showPicker, setShowPicker] = useState(false)
   const [filters, setFilters] = useState<TableFilter[]>([])
   const [filterColumn, setFilterColumn] = useState<string | null>(null)
   const [showExport, setShowExport] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const parentRef = useRef<HTMLDivElement | null>(null)
 
-  const rowsQuery = useTableRows(
+  const rowsQuery = useInfiniteTableRows(
     activeConnID,
     effective?.schema ?? null,
     effective?.name ?? null,
-    page,
     PAGE_SIZE,
     filters,
   )
+
+  // Reset scroll to top whenever the table or its filters change. Without this
+  // the user lands wherever the previous table was — confusing on big tables.
+  useEffect(() => {
+    parentRef.current?.scrollTo({ top: 0 })
+  }, [effective?.schema, effective?.name, filters])
 
   if (schemaQuery.isLoading && allTables.length === 0) {
     return (
@@ -76,16 +83,18 @@ export default function DataPage() {
     )
   }
 
-  const rows: CellValue[][] = rowsQuery.data?.rows ?? []
-  const cols = rowsQuery.data?.columns ?? effective.columns.map((c) => ({ name: c.name, type_name: c.type }))
-  const estimated = rowsQuery.data?.estimated_total ?? effective.rows
+  const pages = rowsQuery.data?.pages ?? []
+  const rows: CellValue[][] = useMemo(() => pages.flatMap((p) => p.rows), [pages])
+  const cols =
+    pages[0]?.columns ?? effective.columns.map((c) => ({ name: c.name, type_name: c.type }))
+  const latestEst = pages.length > 0 ? pages[pages.length - 1] : undefined
+  const estimated = latestEst?.estimated_total ?? effective.rows
+  // The total is exact when either the latest page told us so, or when we've
+  // reached the tail (no more pages).
+  const estimatedExact = (latestEst?.estimated_total_exact ?? false) || rowsQuery.hasNextPage === false
   const activeFilters = filters.filter((f) => f.values.length > 0)
 
-  const totalPages =
-    estimated > 0 ? Math.max(1, Math.ceil(estimated / PAGE_SIZE)) : Math.max(1, page + (rows.length === PAGE_SIZE ? 2 : 1))
-
   const applyColumnFilter = (column: string, values: CellValue[]) => {
-    setPage(0)
     setFilters((prev) => {
       const rest = prev.filter((f) => f.column !== column)
       return values.length > 0 ? [...rest, { column, values }] : rest
@@ -111,11 +120,13 @@ export default function DataPage() {
     }
   }
 
+  const gridTemplate = `40px ${cols.map(() => 'minmax(140px, 1fr)').join(' ')}`
+
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateRows: '44px 48px 1fr 36px',
+        gridTemplateRows: '44px 48px 1fr 28px',
         height: '100%',
         minHeight: 0,
       }}
@@ -156,9 +167,8 @@ export default function DataPage() {
           value={`${effective.schema}.${effective.name}`}
           onChange={(k) => {
             const [s, n] = k.split('.')
-            setPage(0)
             setFilters([])
-            navigate(`/data/${s}/${n}`)
+            navigate(`/data/${encodeURIComponent(s)}/${encodeURIComponent(n)}`)
           }}
           open={showPicker}
           setOpen={setShowPicker}
@@ -223,10 +233,7 @@ export default function DataPage() {
           </div>
           {activeFilters.length > 0 && (
             <button
-              onClick={() => {
-                setPage(0)
-                setFilters([])
-              }}
+              onClick={() => setFilters([])}
               style={{
                 color: 'var(--fg-4)',
                 background: 'none',
@@ -250,7 +257,11 @@ export default function DataPage() {
         <span className="mono tnum" style={{ fontSize: 11, color: 'var(--fg-4)' }}>
           {rowsQuery.isLoading
             ? 'loading…'
-            : `${rows.length} rows · ${activeFilters.length > 0 ? fmtCount(estimated) + ' filtered' : '~' + fmtCount(estimated) + ' total'}`}
+            : `${rows.length} rows · ${
+                activeFilters.length > 0
+                  ? fmtCount(estimated) + ' filtered'
+                  : (estimatedExact ? '' : '~') + fmtCount(estimated) + ' total'
+              }`}
         </span>
         <div style={{ position: 'relative' }}>
           <button
@@ -273,95 +284,28 @@ export default function DataPage() {
         </div>
       </div>
 
-      <div style={{ overflow: 'auto', background: 'var(--bg-0)' }}>
-        {rowsQuery.error ? (
-          <div style={{ padding: 24 }}>
-            <FatalError msg={'rows: ' + errMsg(rowsQuery.error)} />
-          </div>
-        ) : (
-          <table
-            className="tbl"
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={thBase}>#</th>
-                {cols.map((c) => {
-                  const meta = effective.columns.find((ec) => ec.name === c.name)
-                  return (
-                    <th key={c.name} style={{ ...thBase, textAlign: 'left' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
-                        <span style={{ color: 'var(--fg-1)' }}>{c.name}</span>
-                        {meta?.pk && (
-                          <span style={{ color: 'var(--c-amber)', fontSize: 9, letterSpacing: '0.05em' }}>PK</span>
-                        )}
-                        {meta?.fk && (
-                          <span style={{ color: 'var(--c-cyan)', fontSize: 9, letterSpacing: '0.05em' }}>FK</span>
-                        )}
-                        <ColumnFilterButton
-                          connID={activeConnID}
-                          schema={effective.schema}
-                          table={effective.name}
-                          column={c.name}
-                          filters={filters}
-                          selected={filters.find((f) => f.column === c.name)?.values ?? []}
-                          open={filterColumn === c.name}
-                          setOpen={(open) => setFilterColumn(open ? c.name : null)}
-                          onApply={(values) => applyColumnFilter(c.name, values)}
-                        />
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: 'var(--c-violet)',
-                          fontStyle: 'italic',
-                          marginTop: 2,
-                          textTransform: 'none',
-                          letterSpacing: 0,
-                        }}
-                      >
-                        {meta?.type ?? c.type_name}
-                      </div>
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const idx = page * PAGE_SIZE + i
-                return (
-                  <tr key={i}>
-                    <td style={{ ...tdBase, textAlign: 'right', color: 'var(--fg-4)' }} className="tnum">
-                      {idx + 1}
-                    </td>
-                    {row.map((cell, ci) => (
-                      <td key={ci} style={tdBase} title={String(cell ?? '')}>
-                        {renderCell(cell)}
-                      </td>
-                    ))}
-                  </tr>
-                )
-              })}
-              {!rowsQuery.isLoading && rows.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={cols.length + 1}
-                    style={{ ...tdBase, textAlign: 'center', color: 'var(--fg-4)', padding: 28 }}
-                  >
-                    No rows on this page.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {rowsQuery.error ? (
+        <div style={{ padding: 24, overflow: 'auto', background: 'var(--bg-0)' }}>
+          <FatalError msg={'rows: ' + errMsg(rowsQuery.error)} />
+        </div>
+      ) : (
+        <VirtualizedRows
+          parentRef={parentRef}
+          rows={rows}
+          cols={cols}
+          effective={effective}
+          gridTemplate={gridTemplate}
+          filters={filters}
+          filterColumn={filterColumn}
+          setFilterColumn={setFilterColumn}
+          applyColumnFilter={applyColumnFilter}
+          activeConnID={activeConnID}
+          isLoading={rowsQuery.isLoading}
+          hasNextPage={rowsQuery.hasNextPage}
+          isFetchingNextPage={rowsQuery.isFetchingNextPage}
+          fetchNextPage={() => rowsQuery.fetchNextPage()}
+        />
+      )}
 
       <div
         style={{
@@ -370,57 +314,216 @@ export default function DataPage() {
           padding: '0 18px',
           borderTop: '1px solid var(--line-1)',
           background: 'var(--bg-1)',
-          fontSize: 11.5,
+          fontSize: 11,
           color: 'var(--fg-3)',
           gap: 14,
         }}
       >
-        <span>
-          Page{' '}
-          <span className="tnum mono" style={{ color: 'var(--fg-1)' }}>
-            {page + 1}
-          </span>
-          {estimated > 0 && (
-            <>
-              {' '}
-              of{' '}
-              <span className="tnum mono" style={{ color: 'var(--fg-1)' }}>
-                {totalPages}
-              </span>
-            </>
-          )}
+        <span className="mono tnum" style={{ color: 'var(--fg-4)' }}>
+          {rows.length} loaded
+        </span>
+        <span style={{ color: 'var(--fg-5)' }}>·</span>
+        <span className="mono tnum" style={{ color: 'var(--fg-4)' }}>
+          {activeFilters.length > 0
+            ? fmtCount(estimated) + ' filtered'
+            : (estimatedExact ? '' : '~') + fmtCount(estimated) + ' total'}
         </span>
         <span style={{ flex: 1 }} />
-        <PageBtn disabled={page === 0} onClick={() => setPage(0)} title="First">
-          «
-        </PageBtn>
-        <PageBtn disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
-          ‹
-        </PageBtn>
-        <PageBtn
-          disabled={rows.length < PAGE_SIZE}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          ›
-        </PageBtn>
-        <PageBtn
-          disabled={rows.length < PAGE_SIZE || estimated <= 0}
-          onClick={() => setPage(totalPages - 1)}
-          title="Last"
-        >
-          »
-        </PageBtn>
-        <span style={{ marginLeft: 12, color: 'var(--fg-4)' }}>{activeConn?.alias ?? '—'}</span>
+        <span style={{ color: 'var(--fg-4)' }}>
+          {rowsQuery.isFetchingNextPage
+            ? 'loading more…'
+            : rowsQuery.hasNextPage
+              ? 'scroll for more'
+              : 'end of data'}
+        </span>
+        <span style={{ color: 'var(--fg-5)' }}>·</span>
+        <span style={{ color: 'var(--fg-4)' }}>{activeConn?.alias ?? '—'}</span>
       </div>
     </div>
   )
 }
 
-const thBase: React.CSSProperties = {
-  position: 'sticky',
-  top: 0,
-  zIndex: 2,
-  background: 'var(--bg-1)',
+function VirtualizedRows({
+  parentRef,
+  rows,
+  cols,
+  effective,
+  gridTemplate,
+  filters,
+  filterColumn,
+  setFilterColumn,
+  applyColumnFilter,
+  activeConnID,
+  isLoading,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+}: {
+  parentRef: React.MutableRefObject<HTMLDivElement | null>
+  rows: CellValue[][]
+  cols: Array<{ name: string; type_name: string }>
+  effective: SchemaTable
+  gridTemplate: string
+  filters: TableFilter[]
+  filterColumn: string | null
+  setFilterColumn(c: string | null): void
+  applyColumnFilter(column: string, values: CellValue[]): void
+  activeConnID: number | null
+  isLoading: boolean
+  hasNextPage: boolean | undefined
+  isFetchingNextPage: boolean
+  fetchNextPage(): void
+}) {
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  })
+
+  const items = virtualizer.getVirtualItems()
+
+  // Infinite-scroll trigger: when the last virtual row is close to the loaded
+  // tail, request the next page. Guard against repeated calls while a fetch
+  // is in flight (TanStack already deduplicates, but we save the React work).
+  useEffect(() => {
+    const last = items[items.length - 1]
+    if (!last) return
+    if (!hasNextPage || isFetchingNextPage) return
+    if (last.index >= rows.length - 5) fetchNextPage()
+  }, [items, rows.length, hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  // Minimum width so wide tables get a horizontal scrollbar instead of
+  // crushing every column to 0.
+  const minWidth = 40 + cols.length * 140
+
+  return (
+    <div
+      ref={parentRef}
+      style={{
+        overflow: 'auto',
+        background: 'var(--bg-0)',
+        position: 'relative',
+        contain: 'strict',
+      }}
+    >
+      <div style={{ minWidth, position: 'relative' }}>
+        {/* Sticky header */}
+        <div
+          role="row"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: gridTemplate,
+            position: 'sticky',
+            top: 0,
+            zIndex: 3,
+            background: 'var(--bg-1)',
+            borderBottom: '1px solid var(--line-1)',
+          }}
+        >
+          <div style={{ ...thCellBase, textAlign: 'right' }}>#</div>
+          {cols.map((c) => {
+            const meta = effective.columns.find((ec) => ec.name === c.name)
+            return (
+              <div key={c.name} style={thCellBase}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+                  <span style={{ color: 'var(--fg-1)' }}>{c.name}</span>
+                  {meta?.pk && (
+                    <span style={{ color: 'var(--c-amber)', fontSize: 9, letterSpacing: '0.05em' }}>PK</span>
+                  )}
+                  {meta?.fk && (
+                    <span style={{ color: 'var(--c-cyan)', fontSize: 9, letterSpacing: '0.05em' }}>FK</span>
+                  )}
+                  <ColumnFilterButton
+                    connID={activeConnID}
+                    schema={effective.schema}
+                    table={effective.name}
+                    column={c.name}
+                    filters={filters}
+                    selected={filters.find((f) => f.column === c.name)?.values ?? []}
+                    open={filterColumn === c.name}
+                    setOpen={(open) => setFilterColumn(open ? c.name : null)}
+                    onApply={(values) => applyColumnFilter(c.name, values)}
+                  />
+                </div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--c-violet)',
+                    fontStyle: 'italic',
+                    marginTop: 2,
+                    textTransform: 'none',
+                    letterSpacing: 0,
+                  }}
+                >
+                  {meta?.type ?? c.type_name}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Empty / loading states */}
+        {!isLoading && rows.length === 0 && (
+          <div
+            style={{
+              padding: 28,
+              textAlign: 'center',
+              color: 'var(--fg-4)',
+              fontSize: 12,
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            No rows.
+          </div>
+        )}
+
+        {/* Virtualized list */}
+        <div
+          style={{
+            height: virtualizer.getTotalSize(),
+            position: 'relative',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+          }}
+        >
+          {items.map((vi) => {
+            const row = rows[vi.index]
+            return (
+              <div
+                key={vi.key}
+                role="row"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: vi.size,
+                  transform: `translateY(${vi.start}px)`,
+                  display: 'grid',
+                  gridTemplateColumns: gridTemplate,
+                  borderBottom: '1px solid var(--line-1)',
+                  color: 'var(--fg-2)',
+                }}
+              >
+                <div style={{ ...tdCellBase, textAlign: 'right', color: 'var(--fg-4)' }} className="tnum">
+                  {vi.index + 1}
+                </div>
+                {row.map((cell, ci) => (
+                  <div key={ci} style={tdCellBase} title={String(cell ?? '')}>
+                    {renderCell(cell)}
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const thCellBase: React.CSSProperties = {
   color: 'var(--fg-3)',
   fontWeight: 500,
   textAlign: 'left',
@@ -428,53 +531,18 @@ const thBase: React.CSSProperties = {
   letterSpacing: '0.04em',
   textTransform: 'uppercase',
   padding: '8px 12px',
-  borderBottom: '1px solid var(--line-1)',
   whiteSpace: 'nowrap',
+  fontFamily: 'var(--font-mono)',
 }
 
-const tdBase: React.CSSProperties = {
+const tdCellBase: React.CSSProperties = {
   padding: '0 12px',
-  height: 'var(--row-h, 30px)',
-  borderBottom: '1px solid var(--line-1)',
-  color: 'var(--fg-2)',
+  display: 'flex',
+  alignItems: 'center',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  maxWidth: 260,
-}
-
-function PageBtn({
-  children,
-  onClick,
-  disabled,
-  title,
-}: {
-  children: React.ReactNode
-  onClick(): void
-  disabled?: boolean
-  title?: string
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 5,
-        background: 'transparent',
-        border: 0,
-        color: 'var(--fg-3)',
-        cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.35 : 1,
-        fontFamily: 'inherit',
-        fontSize: 13,
-      }}
-    >
-      {children}
-    </button>
-  )
+  minWidth: 0,
 }
 
 function TablePicker({

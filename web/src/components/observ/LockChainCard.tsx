@@ -38,6 +38,13 @@ export default function LockChainCard({ chains, loading, error, connID, tag }: P
         <span className="tnum" style={{ fontSize: 11, color: 'var(--fg-4)' }}>
           {chains.length === 0 ? 'no contention' : `${chains.length} chain${chains.length === 1 ? '' : 's'}`}
         </span>
+        <span
+          className="mono"
+          style={{ fontSize: 10.5, color: 'var(--fg-5)', letterSpacing: '0.02em' }}
+          title="Live query: pg_stat_activity joined to pg_blocking_pids()"
+        >
+          · pg_stat_activity + pg_blocking_pids
+        </span>
         <span style={{ flex: 1 }} />
         {!error && chains.length === 0 && (
           <span
