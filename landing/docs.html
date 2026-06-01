@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>dbil docs — quick start</title>
+    <meta
+      name="description"
+      content="Install dbil into a docker-compose project, or run it standalone and add Postgres connections through the UI. Tags and production safety."
+    />
+    <meta name="theme-color" content="#0d0a09" />
+    <link rel="icon" type="image/png" href="assets/logo.png" />
+
+    <link rel="alternate" hreflang="en" href="docs.html" />
+    <link rel="alternate" hreflang="ru" href="docs.ru.html" />
+    <link rel="alternate" hreflang="x-default" href="docs.html" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400;12..96,75..100,500;12..96,75..100,600;12..96,75..100,700;12..96,75..100,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="masthead" role="banner">
+      <div class="wrap masthead-row">
+        <a class="mark" href="index.html" aria-label="dbil — back to landing">
+          <span class="mark-name">dbil</span>
+          <span class="mark-sub" aria-hidden="true">docs</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="index.html">Landing</a>
+          <a href="https://github.com/unkabas/dbil">GitHub</a>
+          <a href="https://github.com/unkabas/dbil/releases">Releases</a>
+          <span class="lang-switch" aria-label="Language">
+            <a href="docs.html" lang="en" class="is-active" aria-current="true">EN</a>
+            <a href="docs.ru.html" lang="ru" hreflang="ru">RU</a>
+          </span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1" class="docs-main">
+      <div class="wrap docs-layout">
+        <aside class="docs-nav" aria-label="Documentation sections">
+          <p class="docs-nav-title mono">contents</p>
+          <ol class="docs-nav-list">
+            <li>
+              <a href="#quick-start">Quick start</a>
+              <ol>
+                <li><a href="#option-a">Auto-discovery via compose labels</a></li>
+                <li><a href="#option-b">Run standalone, connect in the UI</a></li>
+                <li><a href="#verify">Verify the image</a></li>
+                <li><a href="#first-run">First-run admin password</a></li>
+              </ol>
+            </li>
+            <li><a href="#connections">Adding a connection</a></li>
+            <li><a href="#tags">Tags &amp; production safety</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+          </ol>
+          <p class="docs-nav-foot mono">
+            Found a gap? Open an
+            <a href="https://github.com/unkabas/dbil/issues">issue on GitHub</a>.
+          </p>
+        </aside>
+
+        <article class="docs-content">
+          <header class="docs-header">
+            <p class="docs-eyebrow mono">field reference</p>
+            <h1 class="display-l">Quick start.</h1>
+            <p class="lede">
+              dbil is one ~20&nbsp;MB container with the React UI baked in.
+              There are two install paths: drop it into an existing
+              <code class="inline-code">docker-compose.yml</code> for
+              auto-discovery, or run it standalone and add connections by hand.
+              Pick the one that fits where your Postgres already lives.
+            </p>
+          </header>
+
+          <section id="quick-start" class="docs-section">
+            <h2>Quick start</h2>
+            <p>
+              The two paths are not better-or-worse; they fit different setups.
+              Option A is for projects that already use compose and want dbil
+              to read database credentials from container labels. Option B is
+              for everyone else, including managed-cloud Postgres, a database
+              on your laptop, or a remote dev VM.
+            </p>
+
+            <h3 id="option-a">Option A: auto-discovery via compose labels</h3>
+            <p>
+              Add two things on your Postgres service: a set of
+              <code class="inline-code">dbil.*</code> labels, and a shared
+              network. Then add dbil to that network with the Docker socket
+              mounted read-only. dbil scans for containers carrying its labels
+              and opens the connections for you. No manual credential entry.
+            </p>
+            <figure class="codeblock">
+              <figcaption class="codeblock-bar mono">
+                <span>docker-compose.yml</span>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  data-copy="quickstart-compose"
+                  aria-label="Copy docker-compose snippet"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Copy</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-compose" class="mono"><code><span class="c-kw">services</span>:
+  <span class="c-kw">postgres</span>:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: appdb
+    labels:
+      dbil.enable: <span class="c-str">"true"</span>
+      dbil.alias:  <span class="c-str">"App DB"</span>
+      dbil.tag:    <span class="c-str">"dev"</span>
+      dbil.creds.username_env: <span class="c-str">"POSTGRES_USER"</span>
+      dbil.creds.password_env: <span class="c-str">"POSTGRES_PASSWORD"</span>
+      dbil.creds.database_env: <span class="c-str">"POSTGRES_DB"</span>
+    networks: [appnet]
+
+  <span class="c-kw">dbil</span>:
+    image: ghcr.io/unkabas/dbil:latest
+    command: [<span class="c-str">"serve"</span>]
+    ports: [<span class="c-str">"4242:4242"</span>]
+    volumes:
+      - dbil_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DBIL_DISCOVER: <span class="c-str">"docker"</span>
+      DBIL_NETWORK:  <span class="c-str">"appnet"</span>
+    networks: [appnet]
+
+<span class="c-kw">volumes</span>:
+  dbil_data:
+
+<span class="c-kw">networks</span>:
+  appnet:
+    name: appnet</code></pre>
+            </figure>
+            <p>
+              Then bring it up. The first run writes the admin password to
+              <code class="inline-code">/data/initial-credentials.txt</code>
+              inside the dbil container and also prints it to the logs.
+            </p>
+            <figure class="codeblock codeblock-tight">
+              <figcaption class="codeblock-bar mono">
+                <span>shell</span>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  data-copy="quickstart-up"
+                  aria-label="Copy run commands"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Copy</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-up" class="mono"><code><span class="c-com"># set a postgres password</span>
+echo <span class="c-str">"POSTGRES_PASSWORD=$(openssl rand -base64 24)"</span> &gt; .env
+
+<span class="c-com"># start it</span>
+docker compose up -d
+
+<span class="c-com"># read the admin password</span>
+docker compose logs dbil | grep <span class="c-str">"admin password"</span></code></pre>
+            </figure>
+            <p>
+              Open <code class="inline-code">http://localhost:4242</code>, sign
+              in with the admin password, and you should see the
+              <strong>App DB</strong> connection already listed in the sidebar
+              with the <code class="inline-code">dev</code> tag.
+            </p>
+            <aside class="docs-note">
+              <span class="docs-note-tag mono">why ro</span>
+              The Docker socket is mounted
+              <code class="inline-code">:ro</code> because dbil only reads
+              container labels and resolves env-var values. It never starts,
+              stops, or modifies containers.
+            </aside>
+
+            <h3 id="option-b">Option B: run standalone, connect in the UI</h3>
+            <p>
+              Best when your Postgres lives somewhere dbil can&rsquo;t see
+              labels on: a managed cloud, your laptop, a remote dev VM, or a
+              separate compose project. Run dbil by itself, then add
+              connections through the workspace UI.
+            </p>
+            <figure class="codeblock codeblock-tight">
+              <figcaption class="codeblock-bar mono">
+                <span>shell</span>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  data-copy="quickstart-run"
+                  aria-label="Copy docker run command"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Copy</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-run" class="mono"><code>docker run -d \
+  --name dbil \
+  -p 4242:4242 \
+  -v dbil_data:/data \
+  ghcr.io/unkabas/dbil:latest serve</code></pre>
+            </figure>
+            <p>
+              Open <code class="inline-code">http://localhost:4242</code>, read
+              the admin password from the logs
+              (<code class="inline-code">docker logs dbil</code>), then jump to
+              <a href="#connections">Adding a connection</a> below.
+            </p>
+
+            <h3 id="verify">Verify the image</h3>
+            <p>
+              Every release tag publishes a multi-arch image signed with
+              <code class="inline-code">cosign</code> keyless OIDC. SPDX SBOMs
+              are attached to each
+              <a href="https://github.com/unkabas/dbil/releases">GitHub release</a>.
+            </p>
+            <figure class="codeblock">
+              <figcaption class="codeblock-bar mono">
+                <span>cosign verify</span>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  data-copy="quickstart-cosign"
+                  aria-label="Copy cosign verify command"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Copy</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-cosign" class="mono"><code>cosign verify ghcr.io/unkabas/dbil:latest \
+  --certificate-identity-regexp=<span class="c-str">'https://github.com/unkabas/dbil/.*'</span> \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com</code></pre>
+            </figure>
+
+            <h3 id="first-run">First-run admin password</h3>
+            <p>
+              On the very first start, dbil generates an admin password and
+              writes it to two places:
+            </p>
+            <ul>
+              <li>the dbil logs (one line, prefixed <code class="inline-code">admin password:</code>)</li>
+              <li>
+                <code class="inline-code">/data/initial-credentials.txt</code>
+                inside the container (so it survives a log rotation)
+              </li>
+            </ul>
+            <p>
+              The file is deleted automatically the first time you successfully
+              sign in. To rotate, sign out and run
+              <code class="inline-code">docker exec dbil dbil reset-admin</code>.
+            </p>
+          </section>
+
+          <section id="connections" class="docs-section">
+            <h2>Adding a connection</h2>
+            <p>
+              If you took <a href="#option-a">Option A</a>, connections already
+              appear in the sidebar. The flow below is for Option B, or for
+              any second database you add later regardless of install path.
+            </p>
+            <ol class="docs-steps">
+              <li>Click <strong>Connections</strong> in the left sidebar.</li>
+              <li>Click <strong>Add connection</strong> in the panel header.</li>
+              <li>
+                Fill in <code class="inline-code">host</code>,
+                <code class="inline-code">port</code>,
+                <code class="inline-code">database</code>,
+                <code class="inline-code">user</code>,
+                <code class="inline-code">password</code>.
+              </li>
+              <li>
+                Pick a <strong>tag</strong>:
+                <code class="inline-code">local</code>,
+                <code class="inline-code">dev</code>,
+                <code class="inline-code">staging</code>, or
+                <code class="inline-code">production</code>. The tag is the
+                contract that decides what dbil refuses; see
+                <a href="#tags">Tags &amp; production safety</a>.
+              </li>
+              <li>
+                Click <strong>Test</strong>. dbil opens the connection, runs
+                <code class="inline-code">SELECT 1</code>, and reads
+                <code class="inline-code">pg_catalog</code>. Green means
+                ready.
+              </li>
+              <li>
+                <strong>Save</strong>. The password is immediately encrypted
+                with a per-connection
+                <abbr title="data encryption key">DEK</abbr> derived from the
+                master key and written to
+                <code class="inline-code">/data/dbil.db</code> as ciphertext.
+                It never sits in plaintext on disk.
+              </li>
+            </ol>
+            <p>
+              On production-tagged connections, dbil also asks for a separate
+              passphrase that is not derived from the master key. That
+              passphrase is required every time you open the connection in a
+              new session.
+            </p>
+            <aside class="docs-note">
+              <span class="docs-note-tag mono">passphrase</span>
+              Lose the passphrase, lose access. There is no recovery flow
+              because there is no path that would not also be an attack path.
+              Treat production passphrases the way you treat the database
+              backup encryption key.
+            </aside>
+          </section>
+
+          <section id="tags" class="docs-section">
+            <h2>Tags &amp; production safety</h2>
+            <p>
+              Every connection carries a tag. The tag decides which statements
+              dbil <em>refuses before they leave the browser</em>, what the
+              workspace prompts for, and what gets logged.
+            </p>
+            <div class="docs-table-wrap">
+              <table class="docs-table mono">
+                <thead>
+                  <tr>
+                    <th scope="col">tag</th>
+                    <th scope="col">DDL</th>
+                    <th scope="col">DML</th>
+                    <th scope="col">DELETE / UPDATE without WHERE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>local</strong></td>
+                    <td>allowed</td>
+                    <td>allowed</td>
+                    <td>allowed</td>
+                  </tr>
+                  <tr>
+                    <td><strong>dev</strong></td>
+                    <td>allowed</td>
+                    <td>X-Confirm</td>
+                    <td class="docs-refused">refused</td>
+                  </tr>
+                  <tr>
+                    <td><strong>staging</strong></td>
+                    <td class="docs-refused">refused</td>
+                    <td>X-Confirm</td>
+                    <td class="docs-refused">refused</td>
+                  </tr>
+                  <tr>
+                    <td><strong>production</strong></td>
+                    <td class="docs-refused">refused</td>
+                    <td>X-Confirm + passphrase</td>
+                    <td class="docs-refused">refused</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              <strong>Refused</strong> means the request returns
+              <code class="inline-code">HTTP/1.1 412 Precondition Required</code>
+              from the dbil server before it ever reaches Postgres. The
+              browser shows the reason inline; the rejected statement is
+              logged to the audit chain with the tag attached.
+            </p>
+            <p>
+              <strong>X-Confirm</strong> means the DML statement is held until
+              the user explicitly confirms it through the editor (which sets
+              an <code class="inline-code">X-Confirm: yes</code> header on the
+              request). The confirmation does not persist between statements.
+            </p>
+            <p>
+              Statement timeouts are tag-driven: five minutes on
+              <code class="inline-code">local</code>, thirty seconds on
+              <code class="inline-code">dev</code>, ten seconds above. To
+              change them, edit
+              <code class="inline-code">/data/dbil.db</code> via
+              <code class="inline-code">dbil config edit</code>.
+            </p>
+          </section>
+
+          <section id="troubleshooting" class="docs-section">
+            <h2>Troubleshooting</h2>
+            <h3>The dbil container starts but no connections appear (Option A)</h3>
+            <p>
+              dbil only discovers containers on the network named in
+              <code class="inline-code">DBIL_NETWORK</code>. If your Postgres
+              service is on a different network, either add it to
+              <code class="inline-code">appnet</code> or set
+              <code class="inline-code">DBIL_NETWORK</code> to the matching
+              one. Confirm with
+              <code class="inline-code">docker network inspect appnet</code>.
+            </p>
+            <h3>I lost the admin password before I signed in</h3>
+            <p>
+              The password is at
+              <code class="inline-code">/data/initial-credentials.txt</code>
+              until you sign in once. After that:
+              <code class="inline-code">docker exec dbil dbil reset-admin</code>.
+            </p>
+            <h3>Connection test returns &ldquo;permission denied for table pg_class&rdquo;</h3>
+            <p>
+              The Postgres user needs read on
+              <code class="inline-code">pg_catalog</code>. Grant
+              <code class="inline-code">pg_read_all_data</code> or use a role
+              with explicit
+              <code class="inline-code">SELECT</code> on
+              <code class="inline-code">information_schema</code>.
+            </p>
+            <h3>Schema graph is empty after connecting</h3>
+            <p>
+              dbil scans only schemas listed in the connection&rsquo;s
+              <strong>visible schemas</strong> field (default
+              <code class="inline-code">public</code>). Edit the connection to
+              add more, then click <strong>Refresh schema</strong>.
+            </p>
+          </section>
+
+          <footer class="docs-footer">
+            <p class="mono">
+              Last updated for dbil <code class="inline-code">v0.1.x</code>.
+              Spotted something wrong, or want a section added? Open an
+              <a href="https://github.com/unkabas/dbil/issues">issue</a> or
+              <a href="https://github.com/unkabas/dbil/blob/main/CONTRIBUTING.md">PR</a>.
+            </p>
+          </footer>
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div class="wrap footer-bottom mono">
+        <span>dbil &mdash; hand built &middot; ships in the open</span>
+        <a href="index.html" class="footer-print">back to the landing &larr;</a>
+        <span>ghcr.io/unkabas/dbil:latest</span>
+      </div>
+    </footer>
+
+    <div class="toast" role="status" aria-live="polite" data-toast hidden>Copied</div>
+
+    <script>
+      (() => {
+        const toast = document.querySelector("[data-toast]");
+        let toastTimer = 0;
+        const showToast = (msg) => {
+          if (!toast) return;
+          toast.textContent = msg;
+          toast.hidden = false;
+          toast.classList.add("toast-show");
+          clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => {
+            toast.classList.remove("toast-show");
+            window.setTimeout(() => { toast.hidden = true; }, 200);
+          }, 1600);
+        };
+
+        document.querySelectorAll(".copy-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-copy");
+            if (!id) return;
+            const src = document.getElementById(id);
+            if (!src) return;
+            try {
+              await navigator.clipboard.writeText(src.innerText);
+              showToast("Copied");
+              btn.classList.add("copy-btn-ok");
+              window.setTimeout(() => btn.classList.remove("copy-btn-ok"), 1400);
+            } catch {
+              showToast("Copy failed — select manually");
+            }
+          });
+        });
+
+        /* Active section tracking — highlight the docs-nav link whose section
+           is the deepest one currently above the viewport top. */
+        const navLinks = document.querySelectorAll(".docs-nav a[href^='#']");
+        if (navLinks.length && "IntersectionObserver" in window) {
+          const linkByHash = new Map();
+          navLinks.forEach((a) => linkByHash.set(a.getAttribute("href").slice(1), a));
+          const sectionState = new Map();
+          const setActive = () => {
+            let active = null;
+            for (const [id, ratio] of sectionState) {
+              if (ratio > 0 && (!active || ratio > active.ratio)) {
+                active = { id, ratio };
+              }
+            }
+            navLinks.forEach((a) => a.classList.remove("is-active"));
+            if (active) {
+              const a = linkByHash.get(active.id);
+              if (a) a.classList.add("is-active");
+            }
+          };
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach((e) => sectionState.set(e.target.id, e.intersectionRatio));
+            setActive();
+          }, { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 1] });
+          document
+            .querySelectorAll(".docs-content [id]")
+            .forEach((el) => observer.observe(el));
+        }
+      })();
+    </script>
+  </body>
+</html>

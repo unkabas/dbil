@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>dbil — документация · быстрый старт</title>
+    <meta
+      name="description"
+      content="Поставить dbil в docker-compose проект или запустить отдельно и добавить Postgres-соединения через UI. Теги и production-безопасность."
+    />
+    <meta name="theme-color" content="#0d0a09" />
+    <link rel="icon" type="image/png" href="assets/logo.png" />
+
+    <link rel="alternate" hreflang="en" href="docs.html" />
+    <link rel="alternate" hreflang="ru" href="docs.ru.html" />
+    <link rel="alternate" hreflang="x-default" href="docs.html" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400;12..96,75..100,500;12..96,75..100,600;12..96,75..100,700;12..96,75..100,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+    <header class="masthead" role="banner">
+      <div class="wrap masthead-row">
+        <a class="mark" href="index.ru.html" aria-label="dbil — назад на главную">
+          <span class="mark-name">dbil</span>
+          <span class="mark-sub" aria-hidden="true">документация</span>
+        </a>
+        <nav class="primary-nav" aria-label="Основная">
+          <a href="index.ru.html">Главная</a>
+          <a href="https://github.com/unkabas/dbil">GitHub</a>
+          <a href="https://github.com/unkabas/dbil/releases">Релизы</a>
+          <span class="lang-switch" aria-label="Язык">
+            <a href="docs.html" lang="en" hreflang="en">EN</a>
+            <a href="docs.ru.html" lang="ru" class="is-active" aria-current="true">RU</a>
+          </span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1" class="docs-main">
+      <div class="wrap docs-layout">
+        <aside class="docs-nav" aria-label="Разделы документации">
+          <p class="docs-nav-title mono">содержание</p>
+          <ol class="docs-nav-list">
+            <li>
+              <a href="#quick-start">Быстрый старт</a>
+              <ol>
+                <li><a href="#option-a">Авто-обнаружение через compose-лейблы</a></li>
+                <li><a href="#option-b">Запустить отдельно, подключить в UI</a></li>
+                <li><a href="#verify">Проверить образ</a></li>
+                <li><a href="#first-run">Пароль администратора на первом запуске</a></li>
+              </ol>
+            </li>
+            <li><a href="#connections">Добавление соединения</a></li>
+            <li><a href="#tags">Теги и production-безопасность</a></li>
+            <li><a href="#troubleshooting">Решение проблем</a></li>
+          </ol>
+          <p class="docs-nav-foot mono">
+            Чего-то не хватает? Открой
+            <a href="https://github.com/unkabas/dbil/issues">issue на GitHub</a>.
+          </p>
+        </aside>
+
+        <article class="docs-content">
+          <header class="docs-header">
+            <p class="docs-eyebrow mono">полевой справочник</p>
+            <h1 class="display-l">Быстрый старт.</h1>
+            <p class="lede">
+              dbil — это один контейнер ~20&nbsp;МБ с React-интерфейсом
+              внутри. Два пути установки: положить в существующий
+              <code class="inline-code">docker-compose.yml</code> для
+              авто-обнаружения, или запустить отдельно и добавлять соединения
+              вручную. Выбирай тот, что подходит к месту, где уже живёт твой
+              Postgres.
+            </p>
+          </header>
+
+          <section id="quick-start" class="docs-section">
+            <h2>Быстрый старт</h2>
+            <p>
+              Эти два пути не «лучше или хуже» — они подходят к разным
+              ситуациям. Вариант&nbsp;A для проектов, где уже есть compose, и
+              dbil должен прочитать креды баз из лейблов контейнеров.
+              Вариант&nbsp;B для всех остальных случаев: managed-облако,
+              база на твоём ноутбуке, удалённая dev-VM.
+            </p>
+
+            <h3 id="option-a">Вариант A: авто-обнаружение через compose-лейблы</h3>
+            <p>
+              Добавь две вещи на свой сервис Postgres: набор
+              <code class="inline-code">dbil.*</code> лейблов и общую сеть.
+              Затем подключи dbil к этой сети и примонтируй сокет Docker
+              только на чтение. dbil сканирует контейнеры на наличие своих
+              лейблов и открывает соединения сам. Ввод кредов вручную не
+              нужен.
+            </p>
+            <figure class="codeblock">
+              <figcaption class="codeblock-bar mono">
+                <span>docker-compose.yml</span>
+                <button class="copy-btn" type="button" data-copy="quickstart-compose" aria-label="Скопировать docker-compose">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Скопировать</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-compose" class="mono"><code><span class="c-kw">services</span>:
+  <span class="c-kw">postgres</span>:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: appdb
+    labels:
+      dbil.enable: <span class="c-str">"true"</span>
+      dbil.alias:  <span class="c-str">"App DB"</span>
+      dbil.tag:    <span class="c-str">"dev"</span>
+      dbil.creds.username_env: <span class="c-str">"POSTGRES_USER"</span>
+      dbil.creds.password_env: <span class="c-str">"POSTGRES_PASSWORD"</span>
+      dbil.creds.database_env: <span class="c-str">"POSTGRES_DB"</span>
+    networks: [appnet]
+
+  <span class="c-kw">dbil</span>:
+    image: ghcr.io/unkabas/dbil:latest
+    command: [<span class="c-str">"serve"</span>]
+    ports: [<span class="c-str">"4242:4242"</span>]
+    volumes:
+      - dbil_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DBIL_DISCOVER: <span class="c-str">"docker"</span>
+      DBIL_NETWORK:  <span class="c-str">"appnet"</span>
+    networks: [appnet]
+
+<span class="c-kw">volumes</span>:
+  dbil_data:
+
+<span class="c-kw">networks</span>:
+  appnet:
+    name: appnet</code></pre>
+            </figure>
+            <p>
+              Подними. На первом запуске пароль администратора пишется в
+              файл <code class="inline-code">/data/initial-credentials.txt</code>
+              внутри контейнера dbil, а также печатается в логи.
+            </p>
+            <figure class="codeblock codeblock-tight">
+              <figcaption class="codeblock-bar mono">
+                <span>shell</span>
+                <button class="copy-btn" type="button" data-copy="quickstart-up" aria-label="Скопировать команды запуска">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Скопировать</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-up" class="mono"><code><span class="c-com"># задай пароль postgres</span>
+echo <span class="c-str">"POSTGRES_PASSWORD=$(openssl rand -base64 24)"</span> &gt; .env
+
+<span class="c-com"># старт</span>
+docker compose up -d
+
+<span class="c-com"># прочитай пароль администратора</span>
+docker compose logs dbil | grep <span class="c-str">"admin password"</span></code></pre>
+            </figure>
+            <p>
+              Открой <code class="inline-code">http://localhost:4242</code>,
+              залогинься паролем администратора, и в сайдбаре должно уже
+              висеть соединение <strong>App&nbsp;DB</strong> с тегом
+              <code class="inline-code">dev</code>.
+            </p>
+            <aside class="docs-note">
+              <span class="docs-note-tag mono">почему ro</span>
+              Сокет Docker монтируется с
+              <code class="inline-code">:ro</code>, потому что dbil только
+              читает лейблы контейнеров и резолвит значения env-переменных.
+              Он никогда не запускает, не останавливает и не меняет
+              контейнеры.
+            </aside>
+
+            <h3 id="option-b">Вариант B: запустить отдельно, подключить в UI</h3>
+            <p>
+              Подходит, когда твой Postgres лежит там, где dbil не увидит
+              лейблов: managed-облако, ноутбук, удалённая dev-VM, отдельный
+              compose-проект. Запускаешь dbil сам по себе и добавляешь
+              соединения через интерфейс рабочего места.
+            </p>
+            <figure class="codeblock codeblock-tight">
+              <figcaption class="codeblock-bar mono">
+                <span>shell</span>
+                <button class="copy-btn" type="button" data-copy="quickstart-run" aria-label="Скопировать команду docker run">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Скопировать</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-run" class="mono"><code>docker run -d \
+  --name dbil \
+  -p 4242:4242 \
+  -v dbil_data:/data \
+  ghcr.io/unkabas/dbil:latest serve</code></pre>
+            </figure>
+            <p>
+              Открой <code class="inline-code">http://localhost:4242</code>,
+              прочитай пароль администратора из логов
+              (<code class="inline-code">docker logs dbil</code>), затем
+              переходи к разделу
+              <a href="#connections">«Добавление соединения»</a> ниже.
+            </p>
+
+            <h3 id="verify">Проверить образ</h3>
+            <p>
+              Каждый релиз-тег публикует multi-arch образ, подписанный
+              <code class="inline-code">cosign</code> keyless OIDC. SPDX SBOM
+              прикреплён к каждому
+              <a href="https://github.com/unkabas/dbil/releases">релизу на GitHub</a>.
+            </p>
+            <figure class="codeblock">
+              <figcaption class="codeblock-bar mono">
+                <span>cosign verify</span>
+                <button class="copy-btn" type="button" data-copy="quickstart-cosign" aria-label="Скопировать команду cosign verify">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                    <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                  </svg>
+                  <span class="copy-label">Скопировать</span>
+                </button>
+              </figcaption>
+              <pre id="quickstart-cosign" class="mono"><code>cosign verify ghcr.io/unkabas/dbil:latest \
+  --certificate-identity-regexp=<span class="c-str">'https://github.com/unkabas/dbil/.*'</span> \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com</code></pre>
+            </figure>
+
+            <h3 id="first-run">Пароль администратора на первом запуске</h3>
+            <p>
+              При самом первом старте dbil генерирует пароль администратора и
+              кладёт его в два места:
+            </p>
+            <ul>
+              <li>в логи dbil (одна строка с префиксом <code class="inline-code">admin password:</code>)</li>
+              <li>
+                в файл <code class="inline-code">/data/initial-credentials.txt</code>
+                внутри контейнера (на случай ротации логов)
+              </li>
+            </ul>
+            <p>
+              Файл удаляется автоматически после первого успешного входа.
+              Чтобы сбросить пароль, выйди и запусти
+              <code class="inline-code">docker exec dbil dbil reset-admin</code>.
+            </p>
+          </section>
+
+          <section id="connections" class="docs-section">
+            <h2>Добавление соединения</h2>
+            <p>
+              Если ты пошёл по <a href="#option-a">Варианту&nbsp;A</a>,
+              соединения уже отображаются в сайдбаре. Процесс ниже — для
+              Варианта&nbsp;B или для любой второй базы, которую ты
+              добавляешь позже независимо от пути установки.
+            </p>
+            <ol class="docs-steps">
+              <li>Нажми <strong>Connections</strong> в левом сайдбаре.</li>
+              <li>Нажми <strong>Add connection</strong> в шапке панели.</li>
+              <li>
+                Заполни <code class="inline-code">host</code>,
+                <code class="inline-code">port</code>,
+                <code class="inline-code">database</code>,
+                <code class="inline-code">user</code>,
+                <code class="inline-code">password</code>.
+              </li>
+              <li>
+                Выбери <strong>тег</strong>:
+                <code class="inline-code">local</code>,
+                <code class="inline-code">dev</code>,
+                <code class="inline-code">staging</code> или
+                <code class="inline-code">production</code>. Тег — это
+                контракт, по которому dbil решает, в чём отказывать; см.
+                <a href="#tags">«Теги и production-безопасность»</a>.
+              </li>
+              <li>
+                Нажми <strong>Test</strong>. dbil откроет соединение,
+                выполнит <code class="inline-code">SELECT 1</code> и прочитает
+                <code class="inline-code">pg_catalog</code>. Зелёный значит
+                готово.
+              </li>
+              <li>
+                <strong>Save</strong>. Пароль сразу шифруется
+                <abbr title="data encryption key">DEK</abbr>, выведенным из
+                мастер-ключа, и пишется в
+                <code class="inline-code">/data/dbil.db</code> как
+                шифротекст. На диске он не лежит в открытом виде ни секунды.
+              </li>
+            </ol>
+            <p>
+              На соединениях с тегом production dbil дополнительно запросит
+              отдельную парольную фразу, не выведенную из мастер-ключа. Эта
+              фраза нужна при каждом открытии соединения в новой сессии.
+            </p>
+            <aside class="docs-note">
+              <span class="docs-note-tag mono">фраза</span>
+              Потеряешь фразу — потеряешь доступ. Восстановления нет, потому
+              что нет такого пути восстановления, который не был бы также
+              путём атаки. Относись к production-фразе так, как ты
+              относишься к ключу шифрования бэкапов базы.
+            </aside>
+          </section>
+
+          <section id="tags" class="docs-section">
+            <h2>Теги и production-безопасность</h2>
+            <p>
+              У каждого соединения есть тег. Тег определяет, какие запросы
+              dbil <em>отклоняет до того, как они уйдут из браузера</em>, что
+              рабочее место запрашивает у пользователя и что попадает в лог.
+            </p>
+            <div class="docs-table-wrap">
+              <table class="docs-table mono">
+                <thead>
+                  <tr>
+                    <th scope="col">тег</th>
+                    <th scope="col">DDL</th>
+                    <th scope="col">DML</th>
+                    <th scope="col">DELETE / UPDATE без WHERE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>local</strong></td>
+                    <td>разрешено</td>
+                    <td>разрешено</td>
+                    <td>разрешено</td>
+                  </tr>
+                  <tr>
+                    <td><strong>dev</strong></td>
+                    <td>разрешено</td>
+                    <td>X-Confirm</td>
+                    <td class="docs-refused">отказ</td>
+                  </tr>
+                  <tr>
+                    <td><strong>staging</strong></td>
+                    <td class="docs-refused">отказ</td>
+                    <td>X-Confirm</td>
+                    <td class="docs-refused">отказ</td>
+                  </tr>
+                  <tr>
+                    <td><strong>production</strong></td>
+                    <td class="docs-refused">отказ</td>
+                    <td>X-Confirm + фраза</td>
+                    <td class="docs-refused">отказ</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              <strong>Отказ</strong> означает, что запрос возвращает
+              <code class="inline-code">HTTP/1.1 412 Precondition Required</code>
+              с сервера dbil, не доходя до Postgres. Браузер сразу показывает
+              причину; отклонённый стейтмент записывается в цепочку аудита
+              вместе с тегом.
+            </p>
+            <p>
+              <strong>X-Confirm</strong> значит, что DML-стейтмент
+              удерживается, пока пользователь явно не подтвердит его через
+              редактор (это ставит заголовок
+              <code class="inline-code">X-Confirm: yes</code> на запрос).
+              Подтверждение не сохраняется между стейтментами.
+            </p>
+            <p>
+              Таймауты стейтментов завязаны на тег: пять минут на
+              <code class="inline-code">local</code>, тридцать секунд на
+              <code class="inline-code">dev</code>, десять секунд на всё
+              выше. Чтобы изменить их, отредактируй
+              <code class="inline-code">/data/dbil.db</code> через
+              <code class="inline-code">dbil config edit</code>.
+            </p>
+          </section>
+
+          <section id="troubleshooting" class="docs-section">
+            <h2>Решение проблем</h2>
+            <h3>Контейнер dbil запустился, но соединений нет (Вариант&nbsp;A)</h3>
+            <p>
+              dbil обнаруживает только контейнеры в сети, указанной в
+              <code class="inline-code">DBIL_NETWORK</code>. Если твой
+              сервис Postgres в другой сети — добавь его в
+              <code class="inline-code">appnet</code> или задай
+              <code class="inline-code">DBIL_NETWORK</code> правильному
+              имени. Проверка:
+              <code class="inline-code">docker network inspect appnet</code>.
+            </p>
+            <h3>Потерял пароль администратора до первого входа</h3>
+            <p>
+              Пароль лежит в
+              <code class="inline-code">/data/initial-credentials.txt</code>,
+              пока ты не зайдёшь хотя бы раз. После этого:
+              <code class="inline-code">docker exec dbil dbil reset-admin</code>.
+            </p>
+            <h3>Тест соединения отвечает «permission denied for table pg_class»</h3>
+            <p>
+              Postgres-юзеру нужны права на чтение
+              <code class="inline-code">pg_catalog</code>. Дай ему
+              <code class="inline-code">pg_read_all_data</code> или роль с
+              явным <code class="inline-code">SELECT</code> на
+              <code class="inline-code">information_schema</code>.
+            </p>
+            <h3>Граф схем пустой после подключения</h3>
+            <p>
+              dbil сканирует только схемы, перечисленные в поле
+              <strong>visible schemas</strong> соединения (по умолчанию
+              <code class="inline-code">public</code>). Открой соединение,
+              добавь нужные схемы, нажми <strong>Refresh schema</strong>.
+            </p>
+          </section>
+
+          <footer class="docs-footer">
+            <p class="mono">
+              Актуально для dbil <code class="inline-code">v0.1.x</code>.
+              Заметил ошибку или хочешь, чтобы добавили раздел? Открой
+              <a href="https://github.com/unkabas/dbil/issues">issue</a> или
+              <a href="https://github.com/unkabas/dbil/blob/main/CONTRIBUTING.md">PR</a>.
+            </p>
+          </footer>
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div class="wrap footer-bottom mono">
+        <span>dbil &mdash; собран руками &middot; опубликован открыто</span>
+        <a href="index.ru.html" class="footer-print">назад на главную &larr;</a>
+        <span>ghcr.io/unkabas/dbil:latest</span>
+      </div>
+    </footer>
+
+    <div class="toast" role="status" aria-live="polite" data-toast hidden>Скопировано</div>
+
+    <script>
+      (() => {
+        const toast = document.querySelector("[data-toast]");
+        let toastTimer = 0;
+        const showToast = (msg) => {
+          if (!toast) return;
+          toast.textContent = msg;
+          toast.hidden = false;
+          toast.classList.add("toast-show");
+          clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => {
+            toast.classList.remove("toast-show");
+            window.setTimeout(() => { toast.hidden = true; }, 200);
+          }, 1600);
+        };
+
+        document.querySelectorAll(".copy-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-copy");
+            if (!id) return;
+            const src = document.getElementById(id);
+            if (!src) return;
+            try {
+              await navigator.clipboard.writeText(src.innerText);
+              showToast("Скопировано");
+              btn.classList.add("copy-btn-ok");
+              window.setTimeout(() => btn.classList.remove("copy-btn-ok"), 1400);
+            } catch {
+              showToast("Не получилось — выдели вручную");
+            }
+          });
+        });
+
+        const navLinks = document.querySelectorAll(".docs-nav a[href^='#']");
+        if (navLinks.length && "IntersectionObserver" in window) {
+          const linkByHash = new Map();
+          navLinks.forEach((a) => linkByHash.set(a.getAttribute("href").slice(1), a));
+          const sectionState = new Map();
+          const setActive = () => {
+            let active = null;
+            for (const [id, ratio] of sectionState) {
+              if (ratio > 0 && (!active || ratio > active.ratio)) {
+                active = { id, ratio };
+              }
+            }
+            navLinks.forEach((a) => a.classList.remove("is-active"));
+            if (active) {
+              const a = linkByHash.get(active.id);
+              if (a) a.classList.add("is-active");
+            }
+          };
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach((e) => sectionState.set(e.target.id, e.intersectionRatio));
+            setActive();
+          }, { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 1] });
+          document
+            .querySelectorAll(".docs-content [id]")
+            .forEach((el) => observer.observe(el));
+        }
+      })();
+    </script>
+  </body>
+</html>

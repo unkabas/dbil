@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>dbil — Postgres-рабочее место для твоего compose-файла</title>
+    <meta
+      name="description"
+      content="Один контейнер ~20 МБ с React-интерфейсом внутри: граф схем, редактор запросов, живые метрики, цепочка аудита. По умолчанию отказывает в DDL на production-соединениях."
+    />
+    <meta name="theme-color" content="#0d0a09" />
+    <link rel="icon" type="image/png" href="assets/logo.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="dbil — Postgres-рабочее место для твоего compose-файла" />
+    <meta
+      property="og:description"
+      content="Один контейнер ~20 МБ с React-интерфейсом внутри. Схема, данные, запросы, наблюдаемость, цепочка аудита. Отказывает в DDL на соединениях с тегом production."
+    />
+    <meta property="og:image" content="assets/hero-schema.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="alternate" hreflang="en" href="index.html" />
+    <link rel="alternate" hreflang="ru" href="index.ru.html" />
+    <link rel="alternate" hreflang="x-default" href="index.html" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400;12..96,75..100,500;12..96,75..100,600;12..96,75..100,700;12..96,75..100,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+    <header class="masthead" role="banner">
+      <div class="wrap masthead-row">
+        <a class="mark" href="#" aria-label="dbil — на главную">
+          <span class="mark-name">dbil</span>
+        </a>
+        <nav class="primary-nav" aria-label="Основная">
+          <a href="docs.ru.html">Документация</a>
+          <a href="https://github.com/unkabas/dbil">GitHub</a>
+          <a href="https://github.com/unkabas/dbil/releases">Релизы</a>
+          <span class="lang-switch" aria-label="Язык">
+            <a href="index.html" lang="en" hreflang="en">EN</a>
+            <a href="index.ru.html" lang="ru" class="is-active" aria-current="true">RU</a>
+          </span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <section class="hero" aria-labelledby="hero-h">
+        <aside class="hero-table" aria-hidden="true">
+          <div class="hero-table-header mono">
+            <span class="hero-table-h-k">public.orders</span>
+            <span class="hero-table-h-sep">·</span>
+            <span>1&nbsp;284&nbsp;392 строк</span>
+            <span class="hero-table-h-sep">·</span>
+            <span class="hero-table-h-port">порт 4242</span>
+          </div>
+          <div class="hero-table-grid">
+            <div class="hero-table-row hero-table-row-head">
+              <div class="hero-table-th hero-table-th-num">#</div>
+              <div class="hero-table-th"><span>id</span><span class="hero-table-type">integer</span></div>
+              <div class="hero-table-th"><span>customer_email</span><span class="hero-table-type">text</span></div>
+              <div class="hero-table-th hero-table-th-r"><span>amount</span><span class="hero-table-type">numeric</span></div>
+              <div class="hero-table-th"><span>status</span><span class="hero-table-type">text</span></div>
+              <div class="hero-table-th"><span>created_at</span><span class="hero-table-type">timestamptz</span></div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">1</div>
+              <div class="hero-table-cell hero-table-num">1284392</div>
+              <div class="hero-table-cell">alex.chen@example.com</div>
+              <div class="hero-table-cell hero-table-num">$128.50</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:23:11</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">2</div>
+              <div class="hero-table-cell hero-table-num">1284391</div>
+              <div class="hero-table-cell">maria.gomez@example.com</div>
+              <div class="hero-table-cell hero-table-num">$42.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:21:48</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">3</div>
+              <div class="hero-table-cell hero-table-num">1284390</div>
+              <div class="hero-table-cell">user_8821@example.com</div>
+              <div class="hero-table-cell hero-table-num">$890.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-pending">pending</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:20:32</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">4</div>
+              <div class="hero-table-cell hero-table-num">1284389</div>
+              <div class="hero-table-cell">jordan.lee@example.com</div>
+              <div class="hero-table-cell hero-table-num">$14.99</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:18:05</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">5</div>
+              <div class="hero-table-cell hero-table-num">1284388</div>
+              <div class="hero-table-cell hero-table-null">NULL</div>
+              <div class="hero-table-cell hero-table-num">$215.40</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:15:50</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">6</div>
+              <div class="hero-table-cell hero-table-num">1284387</div>
+              <div class="hero-table-cell">sam.taylor@example.com</div>
+              <div class="hero-table-cell hero-table-num">$77.25</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-refunded">refunded</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:14:11</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">7</div>
+              <div class="hero-table-cell hero-table-num">1284386</div>
+              <div class="hero-table-cell">user_9244@example.com</div>
+              <div class="hero-table-cell hero-table-num">$329.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:12:38</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">8</div>
+              <div class="hero-table-cell hero-table-num">1284385</div>
+              <div class="hero-table-cell">priya.kumar@example.com</div>
+              <div class="hero-table-cell hero-table-num">$1,294.50</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:09:27</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">9</div>
+              <div class="hero-table-cell hero-table-num">1284384</div>
+              <div class="hero-table-cell">user_2017@example.com</div>
+              <div class="hero-table-cell hero-table-num">$58.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-pending">pending</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:08:14</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">10</div>
+              <div class="hero-table-cell hero-table-num">1284383</div>
+              <div class="hero-table-cell">nikolai.r@example.com</div>
+              <div class="hero-table-cell hero-table-num">$189.99</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:05:02</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">11</div>
+              <div class="hero-table-cell hero-table-num">1284382</div>
+              <div class="hero-table-cell">user_5503@example.com</div>
+              <div class="hero-table-cell hero-table-num">$32.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-failed">failed</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:02:47</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">12</div>
+              <div class="hero-table-cell hero-table-num">1284381</div>
+              <div class="hero-table-cell">rachel.kim@example.com</div>
+              <div class="hero-table-cell hero-table-num">$456.10</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:00:18</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">13</div>
+              <div class="hero-table-cell hero-table-num">1284380</div>
+              <div class="hero-table-cell">user_7716@example.com</div>
+              <div class="hero-table-cell hero-table-num">$92.50</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:58:33</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">14</div>
+              <div class="hero-table-cell hero-table-num">1284379</div>
+              <div class="hero-table-cell">dmitri.v@example.com</div>
+              <div class="hero-table-cell hero-table-num">$678.40</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-refunded">refunded</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:55:21</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">15</div>
+              <div class="hero-table-cell hero-table-num">1284378</div>
+              <div class="hero-table-cell">user_3354@example.com</div>
+              <div class="hero-table-cell hero-table-num">$124.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:53:12</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">16</div>
+              <div class="hero-table-cell hero-table-num">1284377</div>
+              <div class="hero-table-cell">hannah.lee@example.com</div>
+              <div class="hero-table-cell hero-table-num">$231.75</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-pending">pending</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:50:44</div>
+            </div>
+          </div>
+          <div class="hero-table-footer mono">
+            <span>загружено 16 из 1&nbsp;284&nbsp;392</span>
+            <span class="hero-table-footer-hint">⌃↓ для прокрутки</span>
+          </div>
+        </aside>
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <h1 id="hero-h" class="display-xl hero-stack">
+              <span class="hero-stack-l1">Прямо&nbsp;в твой</span>
+              <span class="hero-stack-l2 display-mono">docker-compose</span>
+              <span class="hero-stack-l3">файл.</span>
+            </h1>
+            <p class="lede">
+              Один контейнер, React-интерфейс уже внутри,
+              <span class="mono num">~20&nbsp;МБ</span> на диске. Граф схем,
+              редактор запросов, живые метрики, цепочка аудита с защитой от
+              подделки. По умолчанию отказывает в <code class="inline-code">DDL</code>
+              на соединениях с тегом production.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="#install">
+                <span>Быстрый старт</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7l4 4 4-4" />
+                </svg>
+              </a>
+              <a class="btn btn-ghost" href="https://github.com/unkabas/dbil">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                <span>На GitHub</span>
+              </a>
+            </div>
+            <p class="caption mono">
+              ghcr.io/unkabas/dbil:latest · multi-arch · подпись cosign
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="what" aria-labelledby="what-h">
+        <div class="wrap what-grid">
+          <div class="what-lede">
+            <h2 id="what-h" class="display-m">
+              Рабочее место, а не админка.
+            </h2>
+            <p>
+              Подключаешь dbil к Postgres и получаешь граф схем, собранный
+              прямо из <code class="inline-code">pg_catalog</code>, редактор
+              SQL с автодополнением, пейджер строк, который реально удобен,
+              и вкладку с живыми метриками. Соединения с тегом production
+              отказывают в <code class="inline-code">DDL</code>; DML требует
+              заголовка <code class="inline-code">X-Confirm</code>. Всё, ради
+              чего ты обычно пишешь обёртку-скрипт, dbil уже делает.
+            </p>
+          </div>
+          <ul class="what-facts mono" aria-label="Краткие факты">
+            <li>
+              <span class="fact-k">образ</span>
+              <span class="fact-v">~20 МБ &middot; подпись cosign &middot; multi-arch</span>
+            </li>
+            <li>
+              <span class="fact-k">арх</span>
+              <span class="fact-v">linux + darwin &middot; amd64 + arm64</span>
+            </li>
+            <li>
+              <span class="fact-k">состояние</span>
+              <span class="fact-v">SQLite в /data/dbil.db, шифрование AES-256-GCM</span>
+            </li>
+            <li>
+              <span class="fact-k">ui</span>
+              <span class="fact-v">React, встроен, без CDN в рантайме</span>
+            </li>
+            <li>
+              <span class="fact-k">сеть</span>
+              <span class="fact-v">обнаружение через docker-лейблы, без открытых портов</span>
+            </li>
+            <li>
+              <span class="fact-k">лицензия</span>
+              <span class="fact-v">Apache 2.0 &middot; без телеметрии &middot; без трекинга</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="features" aria-labelledby="features-h">
+        <div class="wrap">
+          <h2 id="features-h" class="visually-hidden">Что внутри</h2>
+
+          <article class="feature feature-shot-live">
+            <div class="feature-shot-live-pin">
+            <div class="feature-table hero-table" data-feature-table>
+              <div class="hero-table-header mono">
+                <span class="hero-table-h-k">public.department</span>
+                <span class="hero-table-h-sep">·</span>
+                <span><span data-filter-total>847</span> строк</span>
+                <span class="hero-table-h-sep">·</span>
+                <span class="hero-table-h-port">порт 4242</span>
+              </div>
+              <div class="hero-table-grid feature-table-grid">
+                <div class="hero-table-row hero-table-row-head">
+                  <div class="hero-table-th hero-table-th-num">#</div>
+                  <div class="hero-table-th"><span>id</span><span class="hero-table-type">integer</span></div>
+                  <div class="hero-table-th has-filter">
+                    <span class="hero-table-th-row">
+                      <span>name</span>
+                      <button class="hero-table-filter-btn" type="button" data-filter-toggle="name" aria-label="фильтр по колонке name" aria-expanded="false">
+                        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M2 3h10l-3.5 5v3l-3 1.5V8z" />
+                        </svg>
+                      </button>
+                    </span>
+                    <span class="hero-table-type">text</span>
+                    <div class="hero-table-filter-pop" data-filter-pop="name" hidden>
+                      <div class="hero-table-filter-input-wrap">
+                        <input class="hero-table-filter-input mono" type="text" placeholder="содержит&hellip;" data-filter-input="name" aria-label="фильтр по name" autocomplete="off" />
+                        <button class="hero-table-filter-clear" type="button" data-filter-clear="name" hidden aria-label="сбросить фильтр">&times;</button>
+                      </div>
+                      <div class="hero-table-filter-hint mono">регистронезависимо &middot; ESC чтобы закрыть</div>
+                    </div>
+                  </div>
+                  <div class="hero-table-th hero-table-th-r"><span>head_count</span><span class="hero-table-type">integer</span></div>
+                  <div class="hero-table-th hero-table-th-r"><span>budget</span><span class="hero-table-type">numeric</span></div>
+                  <div class="hero-table-th"><span>created_at</span><span class="hero-table-type">timestamptz</span></div>
+                </div>
+                <div data-filter-rows>
+                  <div class="hero-table-row" data-row data-name="engineering">
+                    <div class="hero-table-cell hero-table-cell-num">1</div>
+                    <div class="hero-table-cell hero-table-num">1</div>
+                    <div class="hero-table-cell">Engineering</div>
+                    <div class="hero-table-cell hero-table-num">124</div>
+                    <div class="hero-table-cell hero-table-num">$2,840,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering platform">
+                    <div class="hero-table-cell hero-table-cell-num">2</div>
+                    <div class="hero-table-cell hero-table-num">2</div>
+                    <div class="hero-table-cell">Engineering · Platform</div>
+                    <div class="hero-table-cell hero-table-num">38</div>
+                    <div class="hero-table-cell hero-table-num">$890,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-01-15</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering mobile">
+                    <div class="hero-table-cell hero-table-cell-num">3</div>
+                    <div class="hero-table-cell hero-table-num">3</div>
+                    <div class="hero-table-cell">Engineering · Mobile</div>
+                    <div class="hero-table-cell hero-table-num">22</div>
+                    <div class="hero-table-cell hero-table-num">$510,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-06-08</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering infrastructure">
+                    <div class="hero-table-cell hero-table-cell-num">4</div>
+                    <div class="hero-table-cell hero-table-num">4</div>
+                    <div class="hero-table-cell">Engineering · Infrastructure</div>
+                    <div class="hero-table-cell hero-table-num">18</div>
+                    <div class="hero-table-cell hero-table-num">$680,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-02-12</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="product">
+                    <div class="hero-table-cell hero-table-cell-num">5</div>
+                    <div class="hero-table-cell hero-table-num">5</div>
+                    <div class="hero-table-cell">Product</div>
+                    <div class="hero-table-cell hero-table-num">41</div>
+                    <div class="hero-table-cell hero-table-num">$1,120,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="product research">
+                    <div class="hero-table-cell hero-table-cell-num">6</div>
+                    <div class="hero-table-cell hero-table-num">6</div>
+                    <div class="hero-table-cell">Product · Research</div>
+                    <div class="hero-table-cell hero-table-num">9</div>
+                    <div class="hero-table-cell hero-table-num">$290,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-05-20</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="design">
+                    <div class="hero-table-cell hero-table-cell-num">7</div>
+                    <div class="hero-table-cell hero-table-num">7</div>
+                    <div class="hero-table-cell">Design</div>
+                    <div class="hero-table-cell hero-table-num">17</div>
+                    <div class="hero-table-cell hero-table-num">$445,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-05-12</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="sales">
+                    <div class="hero-table-cell hero-table-cell-num">8</div>
+                    <div class="hero-table-cell hero-table-num">8</div>
+                    <div class="hero-table-cell">Sales</div>
+                    <div class="hero-table-cell hero-table-num">58</div>
+                    <div class="hero-table-cell hero-table-num">$1,890,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="sales enterprise">
+                    <div class="hero-table-cell hero-table-cell-num">9</div>
+                    <div class="hero-table-cell hero-table-num">9</div>
+                    <div class="hero-table-cell">Sales · Enterprise</div>
+                    <div class="hero-table-cell hero-table-num">24</div>
+                    <div class="hero-table-cell hero-table-num">$920,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-04-18</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="marketing">
+                    <div class="hero-table-cell hero-table-cell-num">10</div>
+                    <div class="hero-table-cell hero-table-num">10</div>
+                    <div class="hero-table-cell">Marketing</div>
+                    <div class="hero-table-cell hero-table-num">19</div>
+                    <div class="hero-table-cell hero-table-num">$620,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-08-22</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="marketing growth">
+                    <div class="hero-table-cell hero-table-cell-num">11</div>
+                    <div class="hero-table-cell hero-table-num">11</div>
+                    <div class="hero-table-cell">Marketing · Growth</div>
+                    <div class="hero-table-cell hero-table-num">7</div>
+                    <div class="hero-table-cell hero-table-num">$185,000</div>
+                    <div class="hero-table-cell hero-table-ts">2024-01-09</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="finance">
+                    <div class="hero-table-cell hero-table-cell-num">12</div>
+                    <div class="hero-table-cell hero-table-num">12</div>
+                    <div class="hero-table-cell">Finance</div>
+                    <div class="hero-table-cell hero-table-num">14</div>
+                    <div class="hero-table-cell hero-table-num">$380,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="legal">
+                    <div class="hero-table-cell hero-table-cell-num">13</div>
+                    <div class="hero-table-cell hero-table-num">13</div>
+                    <div class="hero-table-cell">Legal</div>
+                    <div class="hero-table-cell hero-table-num">6</div>
+                    <div class="hero-table-cell hero-table-num">$245,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-09-30</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="people ops">
+                    <div class="hero-table-cell hero-table-cell-num">14</div>
+                    <div class="hero-table-cell hero-table-num">14</div>
+                    <div class="hero-table-cell">People Ops</div>
+                    <div class="hero-table-cell hero-table-num">11</div>
+                    <div class="hero-table-cell hero-table-num">$290,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-11-14</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering backend">
+                    <div class="hero-table-cell hero-table-cell-num">15</div>
+                    <div class="hero-table-cell hero-table-num">15</div>
+                    <div class="hero-table-cell">Engineering · Backend Core</div>
+                    <div class="hero-table-cell hero-table-num">31</div>
+                    <div class="hero-table-cell hero-table-num">$740,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-04-15</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering frontend">
+                    <div class="hero-table-cell hero-table-cell-num">16</div>
+                    <div class="hero-table-cell hero-table-num">16</div>
+                    <div class="hero-table-cell">Engineering · Frontend</div>
+                    <div class="hero-table-cell hero-table-num">19</div>
+                    <div class="hero-table-cell hero-table-num">$465,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-09-21</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering ml ai">
+                    <div class="hero-table-cell hero-table-cell-num">17</div>
+                    <div class="hero-table-cell hero-table-num">17</div>
+                    <div class="hero-table-cell">Engineering · ML &amp; AI</div>
+                    <div class="hero-table-cell hero-table-num">12</div>
+                    <div class="hero-table-cell hero-table-num">$680,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-08-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="sales customer success">
+                    <div class="hero-table-cell hero-table-cell-num">18</div>
+                    <div class="hero-table-cell hero-table-num">18</div>
+                    <div class="hero-table-cell">Sales · Customer Success</div>
+                    <div class="hero-table-cell hero-table-num">18</div>
+                    <div class="hero-table-cell hero-table-num">$510,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-07-17</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="marketing content">
+                    <div class="hero-table-cell hero-table-cell-num">19</div>
+                    <div class="hero-table-cell hero-table-num">19</div>
+                    <div class="hero-table-cell">Marketing · Content</div>
+                    <div class="hero-table-cell hero-table-num">6</div>
+                    <div class="hero-table-cell hero-table-num">$145,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-09-15</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="finance accounting">
+                    <div class="hero-table-cell hero-table-cell-num">20</div>
+                    <div class="hero-table-cell hero-table-num">20</div>
+                    <div class="hero-table-cell">Finance · Accounting</div>
+                    <div class="hero-table-cell hero-table-num">9</div>
+                    <div class="hero-table-cell hero-table-num">$235,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-02-08</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="people recruiting">
+                    <div class="hero-table-cell hero-table-cell-num">21</div>
+                    <div class="hero-table-cell hero-table-num">21</div>
+                    <div class="hero-table-cell">People · Recruiting</div>
+                    <div class="hero-table-cell hero-table-num">5</div>
+                    <div class="hero-table-cell hero-table-num">$165,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-05-23</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="people learning development">
+                    <div class="hero-table-cell hero-table-cell-num">22</div>
+                    <div class="hero-table-cell hero-table-num">22</div>
+                    <div class="hero-table-cell">People · L&amp;D</div>
+                    <div class="hero-table-cell hero-table-num">3</div>
+                    <div class="hero-table-cell hero-table-num">$95,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-11-08</div>
+                  </div>
+                </div>
+              </div>
+              <div class="hero-table-footer mono">
+                <span><span data-filter-shown>22</span> показано · <span data-filter-loaded>22</span> загружено · 847 в таблице</span>
+                <button type="button" class="hero-table-footer-hint" data-filter-hint>попробуй фильтр &laquo;engineering&raquo;</button>
+              </div>
+            </div>
+            <div class="feature-overlay" aria-hidden="true"></div>
+            <div class="feature-copy-wrap">
+              <div class="feature-copy">
+                <h3 class="display-s">Листай настоящие строки.</h3>
+                <p>
+                  Виртуализированная таблица для миллионов строк, ресайз
+                  колонок, фильтр прямо в шапке. Кликни иконку фильтра на
+                  колонке <code class="inline-code">name</code> чтобы попробовать.
+                  Экспорт результата фильтра в
+                  <code class="inline-code">JSON</code>,
+                  <code class="inline-code">CSV</code> или
+                  <code class="inline-code">INSERT</code>-стейтменты. Правила
+                  production-тега работают: <code class="inline-code">DELETE</code>
+                  без <code class="inline-code">WHERE</code> отказывает прямо в
+                  браузере, до отправки на сервер.
+                </p>
+              </div>
+            </div>
+            </div>
+          </article>
+
+          <article class="feature feature-shot-live">
+            <div class="feature-shot-live-pin">
+            <div class="feature-dashboard" data-feature-dashboard>
+              <div class="hero-table-header mono">
+                <span class="hero-table-h-k">observability</span>
+                <span class="hero-table-h-sep">·</span>
+                <span>живая &middot; тик 5 с</span>
+                <span class="hero-table-h-sep">·</span>
+                <span class="hero-table-h-port">порт 4242</span>
+              </div>
+              <div class="feature-tiles">
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">TPS</span>
+                  <span class="feature-tile-value mono num" data-tick="tps" data-tick-base="128" data-tick-vary="14">128</span>
+                  <span class="feature-tile-trend mono">&uarr; 12% за неделю</span>
+                </div>
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">cache hit</span>
+                  <span class="feature-tile-value mono num" data-tick="cache" data-tick-base="98.4" data-tick-vary="0.8" data-tick-suffix="%" data-tick-decimal="1">98.4%</span>
+                  <span class="feature-tile-trend mono">&mdash; стабильно</span>
+                </div>
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">sessions</span>
+                  <span class="feature-tile-value mono num" data-tick="sessions" data-tick-base="47" data-tick-vary="6">47</span>
+                  <span class="feature-tile-trend mono">&uarr; 3 за 10 мин</span>
+                </div>
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">лаг репликации</span>
+                  <span class="feature-tile-value mono num" data-tick="lag" data-tick-base="12" data-tick-vary="8" data-tick-suffix="ms">12ms</span>
+                  <span class="feature-tile-trend mono">&mdash; в норме</span>
+                </div>
+              </div>
+              <div class="feature-dashboard-section">
+                <div class="feature-dashboard-sec-h mono">
+                  <span class="feature-dash-sec-k">медленные запросы</span>
+                  <span class="hero-table-h-sep">&middot;</span>
+                  <span>последние 5 мин &middot; <span data-tick="slow-count" data-tick-base="7" data-tick-vary="3">7</span> свыше 500&nbsp;мс</span>
+                </div>
+                <div class="feature-slow-list mono">
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q1" data-tick-base="1284" data-tick-vary="180" data-tick-suffix="ms">1284ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> public.orders <span class="c-kw">WHERE</span> status = $1 <span class="c-kw">ORDER BY</span> created_at <span class="c-kw">DESC</span> <span class="c-kw">LIMIT</span> 50</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q2" data-tick-base="912" data-tick-vary="120" data-tick-suffix="ms">912ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> count(*) <span class="c-kw">FROM</span> public.events <span class="c-kw">WHERE</span> created_at &gt; now() - <span class="c-str">'1 day'</span>::interval</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q3" data-tick-base="684" data-tick-vary="90" data-tick-suffix="ms">684ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">UPDATE</span> public.user_profile <span class="c-kw">SET</span> last_seen = $1 <span class="c-kw">WHERE</span> id <span class="c-kw">IN</span> (&hellip;)</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q4" data-tick-base="542" data-tick-vary="70" data-tick-suffix="ms">542ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> d.name, count(e.id) <span class="c-kw">FROM</span> public.department d <span class="c-kw">LEFT JOIN</span> public.employee e &hellip;</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q5" data-tick-base="508" data-tick-vary="60" data-tick-suffix="ms">508ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">UPDATE</span> public.session <span class="c-kw">SET</span> refreshed_at = $1 <span class="c-kw">WHERE</span> token = $2 <span class="c-kw">RETURNING</span> user_id</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q6" data-tick-base="487" data-tick-vary="55" data-tick-suffix="ms">487ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> u.id, u.email <span class="c-kw">FROM</span> public.user u <span class="c-kw">WHERE</span> u.created_at &gt; now() - <span class="c-str">'7 days'</span>::interval</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q7" data-tick-base="412" data-tick-vary="48" data-tick-suffix="ms">412ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">DELETE</span> <span class="c-kw">FROM</span> public.audit_event <span class="c-kw">WHERE</span> created_at &lt; now() - <span class="c-str">'90 days'</span>::interval</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q8" data-tick-base="395" data-tick-vary="45" data-tick-suffix="ms">395ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> t.* <span class="c-kw">FROM</span> public.task t <span class="c-kw">WHERE</span> t.assigned_to = $1 <span class="c-kw">AND</span> t.completed = false <span class="c-kw">ORDER BY</span> created_at <span class="c-kw">DESC</span></code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q9" data-tick-base="357" data-tick-vary="40" data-tick-suffix="ms">357ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> count(*) <span class="c-kw">FROM</span> public.order_item oi <span class="c-kw">JOIN</span> public.order o <span class="c-kw">ON</span> oi.order_id = o.id <span class="c-kw">WHERE</span> o.status = $1</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q10" data-tick-base="322" data-tick-vary="36" data-tick-suffix="ms">322ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">INSERT INTO</span> public.audit_event (entity_type, entity_id, payload, prev_hash) <span class="c-kw">VALUES</span> ($1, $2, $3, $4)</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q11" data-tick-base="298" data-tick-vary="32" data-tick-suffix="ms">298ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> a.* <span class="c-kw">FROM</span> public.address a <span class="c-kw">WHERE</span> a.user_id <span class="c-kw">IN</span> (<span class="c-kw">SELECT</span> id <span class="c-kw">FROM</span> public.user <span class="c-kw">WHERE</span> active = true)</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q12" data-tick-base="273" data-tick-vary="28" data-tick-suffix="ms">273ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">UPDATE</span> public.connection <span class="c-kw">SET</span> last_ping_at = $1, status = <span class="c-str">'ok'</span> <span class="c-kw">WHERE</span> id = $2</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                </div>
+              </div>
+              <div class="hero-table-footer mono">
+                <span>советчик: <strong>3 неисп. индекса</strong> на public.orders &middot; <strong>1 lock chain</strong> разрешена в <span data-tick="lock-time" data-tick-base="14" data-tick-vary="3" data-tick-suffix=":22:08" data-tick-int="1">14:22:08</span></span>
+                <span class="hero-table-footer-hint">⌃R чтобы обновить</span>
+              </div>
+            </div>
+            <div class="feature-overlay" aria-hidden="true"></div>
+            <div class="feature-copy-wrap">
+              <div class="feature-copy">
+                <h3 class="display-s">Слушай, как дышит база.</h3>
+                <p>
+                  TPS, cache-hit, лаг репликации, медленные запросы, цепочки
+                  блокировок, неиспользуемые индексы. Если запрос блокирует
+                  пять других сессий, жми Kill, и dbil отправит
+                  <code class="inline-code">pg_terminate_backend</code>.
+                  Советчик читает
+                  <code class="inline-code">pg_stat_user_indexes</code> и
+                  показывает, что можно убрать.
+                </p>
+              </div>
+            </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="scope" aria-labelledby="scope-h">
+        <div class="wrap scope-grid">
+          <header class="scope-head">
+            <h2 id="scope-h" class="display-m">
+              Чего в dbil&nbsp;нет.
+            </h2>
+            <p class="scope-lede">
+              Каждая отсутствующая фича — осознанный отказ. Контейнер
+              остаётся маленьким, интерфейс — читаемым, установка — одним
+              сервисом в твоём compose-файле именно благодаря этим отказам,
+              а не вопреки им.
+            </p>
+          </header>
+          <ul class="scope-list mono" aria-label="То, чего dbil не делает">
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">нет телеметрии</span>
+              <span class="scope-note">образ никогда не звонит наружу.</span>
+            </li>
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">нет облачной синхронизации</span>
+              <span class="scope-note">состояние живёт на твоём диске, зашифрованное.</span>
+            </li>
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">нет AI-моста для чата</span>
+              <span class="scope-note">редактор не пишет SQL за тебя. Пиши запрос сам.</span>
+            </li>
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">нет UI прав для команд</span>
+              <span class="scope-note">роли живут в Postgres-соединении, а не в dbil.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="safety" aria-labelledby="safety-h">
+        <div class="wrap">
+          <header class="safety-head">
+            <h2 id="safety-h" class="safety-title">Отказывает в том, чего ты не имел в&nbsp;виду.</h2>
+            <p class="safety-lede">
+              Тег соединения — это контракт. Три отказа держат вес;
+              остальное — в документации.
+            </p>
+          </header>
+
+          <div class="safety-rows">
+            <div class="safety-row">
+              <span class="safety-row-num">01</span>
+              <h3 class="safety-row-title">Production отказывает на сетевом уровне.</h3>
+              <p class="safety-row-summary">
+                <strong>DDL</strong> блокируется. <strong>DML</strong> требует
+                <span class="safety-chip">X-Confirm: yes</span>.
+                <strong>DELETE/UPDATE</strong> без <strong>WHERE</strong>
+                отказаны выше <span class="safety-chip">local</span>.
+              </p>
+              <span class="safety-chip">HTTP 412</span>
+            </div>
+            <div class="safety-row">
+              <span class="safety-row-num">02</span>
+              <h3 class="safety-row-title">Учётки в plaintext: отказ.</h3>
+              <p class="safety-row-summary">
+                Свой DEK на каждое соединение,
+                <span class="safety-chip">AES-256-GCM</span>. Шесть лоадеров
+                мастер-ключа; env-var печатает предупреждение.
+              </p>
+              <span class="safety-chip safety-chip-warn">env var &#9888;</span>
+            </div>
+            <div class="safety-row">
+              <span class="safety-row-num">03</span>
+              <h3 class="safety-row-title">Подделка видна на первой же проверке.</h3>
+              <p class="safety-row-summary">
+                <span class="safety-chip">SHA-256</span> хеш цепочки на каждой
+                строке аудита. <span class="safety-chip">VerifyChain</span>
+                ловит мутацию мгновенно.
+              </p>
+              <span class="safety-chip">CI-gated</span>
+            </div>
+          </div>
+
+          <p class="safety-foot">
+            <span>Полный контракт отказов &middot;</span>
+            <a href="docs.ru.html">документация &rarr;</a>
+          </p>
+        </div>
+      </section>
+
+      <section class="install" aria-labelledby="install-h" id="install" data-install-active="compose">
+        <div class="wrap">
+          <header class="install-head">
+            <h2 id="install-h" class="install-title">Прямо в твой compose.</h2>
+            <p class="install-lede">
+              Два лейбла на сервис Postgres, общая сеть, dbil с примонтированным
+              Docker-сокетом. На первом запуске пароль администратора уходит в
+              логи и в файл <code class="inline-code">/data/initial-credentials.txt</code>.
+            </p>
+          </header>
+
+          <div class="install-panel">
+            <div class="install-tabs" role="tablist" aria-label="Шаги установки">
+              <button class="install-tab" type="button" role="tab" data-install-tab="compose" aria-selected="true">docker-compose.yml</button>
+              <button class="install-tab" type="button" role="tab" data-install-tab="start" aria-selected="false">старт</button>
+              <button class="install-tab" type="button" role="tab" data-install-tab="no-docker" aria-selected="false">без docker</button>
+              <span class="install-tab-spacer"></span>
+              <button class="install-copy" type="button" data-copy="install-pane-active" aria-label="Скопировать активный сниппет">Скопировать</button>
+            </div>
+
+            <div class="install-pane" data-install-pane="compose" role="tabpanel">
+              <pre id="compose" class="mono"><code><span class="c-kw">services</span>:
+  <span class="c-kw">postgres</span>:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: appdb
+    labels:
+      dbil.enable: <span class="c-str">"true"</span>
+      dbil.alias:  <span class="c-str">"App DB"</span>
+      dbil.tag:    <span class="c-str">"dev"</span>
+      dbil.creds.username_env: <span class="c-str">"POSTGRES_USER"</span>
+      dbil.creds.password_env: <span class="c-str">"POSTGRES_PASSWORD"</span>
+      dbil.creds.database_env: <span class="c-str">"POSTGRES_DB"</span>
+    networks: [appnet]
+
+  <span class="c-kw">dbil</span>:
+    image: ghcr.io/unkabas/dbil:latest
+    command: [<span class="c-str">"serve"</span>]
+    ports: [<span class="c-str">"4242:4242"</span>]
+    volumes:
+      - dbil_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DBIL_DISCOVER: <span class="c-str">"docker"</span>
+      DBIL_NETWORK:  <span class="c-str">"appnet"</span>
+    networks: [appnet]
+
+<span class="c-kw">volumes</span>: { dbil_data: }
+<span class="c-kw">networks</span>: { appnet: { name: appnet } }</code></pre>
+            </div>
+
+            <div class="install-pane" data-install-pane="start" role="tabpanel" hidden>
+              <pre id="run" class="mono"><code><span class="c-com"># задай пароль для postgres</span>
+echo <span class="c-str">"POSTGRES_PASSWORD=$(openssl rand -base64 24)"</span> &gt; .env
+
+<span class="c-com"># старт; пароль администратора уходит в логи dbil</span>
+docker compose up -d</code></pre>
+            </div>
+
+            <div class="install-pane" data-install-pane="no-docker" role="tabpanel" hidden>
+              <pre id="binary" class="mono"><code><span class="c-com"># готовые бинарники для linux/{amd64,arm64} и darwin/{amd64,arm64}</span>
+DBIL_DATA_DIR=./dbil-data \
+  ./dbil serve</code></pre>
+            </div>
+          </div>
+
+          <p class="install-foot">
+            <span><span class="install-foot-key">Порт:</span> 4242</span>
+            <span><span class="install-foot-key">Секрет первого запуска:</span> /data/initial-credentials.txt</span>
+            <span><a href="docs.ru.html">Полная документация &rarr;</a></span>
+          </p>
+        </div>
+      </section>
+
+      <section class="verify" aria-labelledby="verify-h">
+        <div class="wrap verify-grid">
+          <div class="verify-copy">
+            <h2 id="verify-h" class="display-m">Проверь перед запуском.</h2>
+            <p>
+              Каждый релиз-тег публикует multi-arch образ, подписанный
+              cosign keyless OIDC. SPDX SBOM прикрепляется к каждому
+              <a href="https://github.com/unkabas/dbil/releases">релизу на GitHub</a>.
+              Файл состояния (<code class="inline-code">/data/dbil.db</code>)
+              зашифрован на уровне приложения: утёкший
+              <code class="inline-code">.db</code> остаётся шифротекстом без
+              мастер-ключа.
+            </p>
+          </div>
+          <figure class="codeblock">
+            <figcaption class="codeblock-bar mono">
+              <span>cosign verify</span>
+              <button class="copy-btn" type="button" data-copy="cosign" aria-label="Скопировать команду cosign verify">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                  <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                  <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                </svg>
+                <span class="copy-label">Скопировать</span>
+              </button>
+            </figcaption>
+            <pre id="cosign" class="mono"><code><span class="c-com"># проверяет keyless OIDC подпись по GitHub identity</span>
+cosign verify ghcr.io/unkabas/dbil:latest \
+  --certificate-identity-regexp=<span class="c-str">'https://github.com/unkabas/dbil/.*'</span> \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com</code></pre>
+          </figure>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div class="wrap footer-grid">
+        <div class="footer-brand">
+          <a class="mark mark-footer" href="#" aria-label="dbil — на главную">
+            <span class="mark-name">dbil</span>
+          </a>
+          <p class="footer-blurb">
+            Postgres-рабочее место для твоего
+            <code class="inline-code">docker&#8209;compose</code> файла.
+            Собран в открытую, без телеметрии.
+          </p>
+        </div>
+
+        <nav class="footer-col" aria-label="Репозиторий">
+          <h4 class="footer-h mono">Репо</h4>
+          <a href="https://github.com/unkabas/dbil">GitHub</a>
+          <a href="https://github.com/unkabas/dbil/releases">Релизы</a>
+          <a href="https://github.com/unkabas/dbil/issues">Issues</a>
+        </nav>
+
+        <nav class="footer-col" aria-label="Документация">
+          <h4 class="footer-h mono">Документация</h4>
+          <a href="docs.ru.html">Быстрый старт</a>
+          <a href="https://github.com/unkabas/dbil#readme">README</a>
+          <a href="https://github.com/unkabas/dbil/blob/main/SECURITY.md">Модель безопасности</a>
+          <a href="https://github.com/unkabas/dbil/blob/main/CONTRIBUTING.md">Вклад в проект</a>
+        </nav>
+
+        <nav class="footer-col" aria-label="Правовое">
+          <h4 class="footer-h mono">Правовое</h4>
+          <a href="https://github.com/unkabas/dbil/blob/main/LICENSE">Apache 2.0</a>
+          <span class="footer-static">Без телеметрии</span>
+          <span class="footer-static">Без трекинга</span>
+        </nav>
+      </div>
+      <div class="wrap footer-bottom mono">
+        <span>dbil — собран руками · опубликован открыто</span>
+        <button type="button" data-print class="footer-print">
+          напечатать страницу как полевую карточку &rarr;
+        </button>
+        <span>ghcr.io/unkabas/dbil:latest</span>
+      </div>
+    </footer>
+
+    <div class="toast" role="status" aria-live="polite" data-toast hidden>Скопировано</div>
+
+    <script>
+      (() => {
+        const toast = document.querySelector("[data-toast]");
+        let toastTimer = 0;
+        const showToast = (msg) => {
+          if (!toast) return;
+          toast.textContent = msg;
+          toast.hidden = false;
+          toast.classList.add("toast-show");
+          clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => {
+            toast.classList.remove("toast-show");
+            window.setTimeout(() => { toast.hidden = true; }, 200);
+          }, 1600);
+        };
+
+        document.querySelectorAll(".copy-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-copy");
+            if (!id) return;
+            const src = document.getElementById(id);
+            if (!src) return;
+            try {
+              await navigator.clipboard.writeText(src.innerText);
+              showToast("Скопировано");
+              btn.classList.add("copy-btn-ok");
+              window.setTimeout(() => btn.classList.remove("copy-btn-ok"), 1400);
+            } catch {
+              showToast("Не получилось — выдели вручную");
+            }
+          });
+        });
+
+        document.querySelectorAll("[data-print]").forEach((btn) => {
+          btn.addEventListener("click", () => window.print());
+        });
+
+        document.querySelectorAll(".install").forEach((section) => {
+          const tabs = section.querySelectorAll(".install-tab[data-install-tab]");
+          const panes = section.querySelectorAll(".install-pane[data-install-pane]");
+          const setActive = (key) => {
+            section.setAttribute("data-install-active", key);
+            tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.installTab === key ? "true" : "false"));
+            panes.forEach((p) => {
+              if (p.dataset.installPane === key) p.removeAttribute("hidden");
+              else p.setAttribute("hidden", "");
+            });
+          };
+          tabs.forEach((t) => t.addEventListener("click", () => setActive(t.dataset.installTab)));
+
+          const copyBtn = section.querySelector('[data-copy="install-pane-active"]');
+          if (copyBtn) {
+            copyBtn.addEventListener("click", async () => {
+              const active = section.getAttribute("data-install-active") || "compose";
+              const pre = section.querySelector(`.install-pane[data-install-pane="${active}"] pre`);
+              if (!pre) return;
+              try {
+                await navigator.clipboard.writeText(pre.innerText);
+                showToast("Скопировано");
+                copyBtn.classList.add("copy-btn-ok");
+                window.setTimeout(() => copyBtn.classList.remove("copy-btn-ok"), 1400);
+              } catch {
+                showToast("Не удалось — выдели вручную");
+              }
+            });
+          }
+        });
+
+        const masthead = document.querySelector(".masthead");
+        let scrollScheduled = false;
+        const updateMastheadState = () => {
+          scrollScheduled = false;
+          if (!masthead) return;
+          const scrolled = window.scrollY > 8;
+          if (scrolled !== masthead.classList.contains("is-scrolled")) {
+            masthead.classList.toggle("is-scrolled", scrolled);
+          }
+        };
+        window.addEventListener("scroll", () => {
+          if (scrollScheduled) return;
+          scrollScheduled = true;
+          window.requestAnimationFrame(updateMastheadState);
+        }, { passive: true });
+        updateMastheadState();
+
+        /* Live-фильтр feature-таблицы — повторяет UX React-приложения. */
+        document.querySelectorAll("[data-feature-table]").forEach((table) => {
+          const rowsRoot = table.querySelector("[data-filter-rows]");
+          if (!rowsRoot) return;
+          const rows = rowsRoot.querySelectorAll("[data-row]");
+          const shownEl = table.querySelector("[data-filter-shown]");
+          const loadedEl = table.querySelector("[data-filter-loaded]");
+          const filterState = {};
+
+          const apply = () => {
+            let shown = 0;
+            rows.forEach((row) => {
+              let match = true;
+              for (const col in filterState) {
+                const q = filterState[col];
+                if (!q) continue;
+                const v = (row.dataset[col] || "").toLowerCase();
+                if (!v.includes(q.toLowerCase())) { match = false; break; }
+              }
+              if (match) { row.removeAttribute("data-filtered-out"); shown++; }
+              else { row.setAttribute("data-filtered-out", ""); }
+            });
+            if (shownEl) shownEl.textContent = shown;
+            if (loadedEl) loadedEl.textContent = shown;
+          };
+
+          const closeAll = () => {
+            table.querySelectorAll("[data-filter-pop]").forEach((p) => { p.hidden = true; });
+            table.querySelectorAll("[data-filter-toggle]").forEach((b) => {
+              b.classList.remove("is-open");
+              b.setAttribute("aria-expanded", "false");
+            });
+          };
+
+          const openCol = (col) => {
+            const btn = table.querySelector('[data-filter-toggle="' + col + '"]');
+            const pop = table.querySelector('[data-filter-pop="' + col + '"]');
+            const input = table.querySelector('[data-filter-input="' + col + '"]');
+            if (!btn || !pop) return;
+            table.querySelectorAll("[data-filter-pop]").forEach((p) => {
+              if (p !== pop) p.hidden = true;
+            });
+            table.querySelectorAll("[data-filter-toggle]").forEach((b) => {
+              if (b !== btn) {
+                b.classList.remove("is-open");
+                b.setAttribute("aria-expanded", "false");
+              }
+            });
+            pop.hidden = false;
+            btn.classList.add("is-open");
+            btn.setAttribute("aria-expanded", "true");
+            if (input) window.requestAnimationFrame(() => input.focus());
+          };
+
+          table.querySelectorAll("[data-filter-toggle]").forEach((btn) => {
+            const col = btn.dataset.filterToggle;
+            const pop = table.querySelector('[data-filter-pop="' + col + '"]');
+            const input = table.querySelector('[data-filter-input="' + col + '"]');
+            const clearBtn = table.querySelector('[data-filter-clear="' + col + '"]');
+            if (!pop || !input) return;
+
+            btn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              if (pop.hidden) openCol(col);
+              else closeAll();
+            });
+            pop.addEventListener("click", (e) => e.stopPropagation());
+
+            input.addEventListener("input", () => {
+              const v = input.value.trim();
+              filterState[col] = v;
+              if (v) {
+                btn.classList.add("is-active");
+                if (clearBtn) clearBtn.hidden = false;
+              } else {
+                btn.classList.remove("is-active");
+                if (clearBtn) clearBtn.hidden = true;
+              }
+              apply();
+            });
+            input.addEventListener("keydown", (e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                closeAll();
+                btn.focus();
+              }
+            });
+
+            if (clearBtn) {
+              clearBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                input.value = "";
+                filterState[col] = "";
+                btn.classList.remove("is-active");
+                clearBtn.hidden = true;
+                apply();
+                input.focus();
+              });
+            }
+          });
+
+          document.addEventListener("click", (e) => {
+            if (!table.contains(e.target)) { closeAll(); return; }
+            if (!e.target.closest("[data-filter-pop]") &&
+                !e.target.closest("[data-filter-toggle]")) {
+              closeAll();
+            }
+          });
+
+          const hintBtn = table.querySelector("[data-filter-hint]");
+          if (hintBtn) {
+            hintBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const col = "name";
+              const btn = table.querySelector('[data-filter-toggle="' + col + '"]');
+              const input = table.querySelector('[data-filter-input="' + col + '"]');
+              const clearBtn = table.querySelector('[data-filter-clear="' + col + '"]');
+              if (!btn || !input) return;
+              input.value = "engineering";
+              filterState[col] = "engineering";
+              btn.classList.add("is-active");
+              if (clearBtn) clearBtn.hidden = false;
+              apply();
+              openCol(col);
+            });
+          }
+        });
+
+        /* Тикающие значения метрик в observability-дашборде. */
+        const reducedMotion = window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!reducedMotion) {
+          const tickEls = document.querySelectorAll("[data-tick]");
+          if (tickEls.length) {
+            const fmt = (el, n) => {
+              const dec = parseInt(el.dataset.tickDecimal || "0", 10);
+              const suf = el.dataset.tickSuffix || "";
+              const isInt = el.dataset.tickInt === "1";
+              if (isInt) {
+                const hh = Math.max(0, Math.min(23, Math.floor(n)));
+                return String(hh).padStart(2, "0") + suf;
+              }
+              if (dec > 0) return n.toFixed(dec) + suf;
+              return Math.round(n) + suf;
+            };
+            const tickOnce = () => {
+              tickEls.forEach((el) => {
+                const base = parseFloat(el.dataset.tickBase || "0");
+                const vary = parseFloat(el.dataset.tickVary || "0");
+                const n = base + (Math.random() - 0.5) * 2 * vary;
+                el.classList.add("is-ticking");
+                el.textContent = fmt(el, n);
+                window.setTimeout(() => el.classList.remove("is-ticking"), 220);
+              });
+            };
+            window.setInterval(tickOnce, 5000);
+          }
+        }
+
+        /* Scroll-pin: --copy-progress начинает расти когда article ещё
+           заходит (до активации pin'а) и достигает 1 на ~60% pin range —
+           оставшиеся 40% даются как «settled read time». */
+        const liveArticles = document.querySelectorAll(".feature-shot-live");
+        if (liveArticles.length && !reducedMotion) {
+          const updatePinProgress = () => {
+            liveArticles.forEach((article) => {
+              const rect = article.getBoundingClientRect();
+              const vh = window.innerHeight;
+              const articleH = article.offsetHeight;
+              const pinScroll = articleH - vh;
+              if (pinScroll <= 0) {
+                article.style.setProperty("--copy-progress", "1");
+                return;
+              }
+              const startY = vh * 0.45;
+              const endY = -pinScroll * 0.45;
+              let p = (startY - rect.top) / (startY - endY);
+              if (p < 0) p = 0;
+              else if (p > 1) p = 1;
+              article.style.setProperty("--copy-progress", p.toFixed(3));
+            });
+          };
+          let pinScheduled = false;
+          const schedulePinUpdate = () => {
+            if (pinScheduled) return;
+            pinScheduled = true;
+            window.requestAnimationFrame(() => {
+              pinScheduled = false;
+              updatePinProgress();
+            });
+          };
+          window.addEventListener("scroll", schedulePinUpdate, { passive: true });
+          window.addEventListener("resize", schedulePinUpdate, { passive: true });
+          updatePinProgress();
+        }
+      })();
+    </script>
+  </body>
+</html>

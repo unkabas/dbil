@@ -1,0 +1,1516 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>dbil — a Postgres workspace for your compose file</title>
+    <meta
+      name="description"
+      content="A 20 MB container with the React UI baked in: schema graph, query editor, live observability, audit chain. Refuses DDL on production-tagged connections by default."
+    />
+    <meta name="theme-color" content="#0d0a09" />
+    <link rel="icon" type="image/png" href="assets/logo.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="dbil — a Postgres workspace for your compose file" />
+    <meta
+      property="og:description"
+      content="One container, ~20 MB on disk, the React UI baked in. Schema, data, query, observability, audit chain. Refuses DDL on production-tagged connections."
+    />
+    <meta property="og:image" content="assets/hero-schema.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="alternate" hreflang="en" href="index.html" />
+    <link rel="alternate" hreflang="ru" href="index.ru.html" />
+    <link rel="alternate" hreflang="x-default" href="index.html" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400;12..96,75..100,500;12..96,75..100,600;12..96,75..100,700;12..96,75..100,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="masthead" role="banner">
+      <div class="wrap masthead-row">
+        <a class="mark" href="#" aria-label="dbil home">
+          <span class="mark-name">dbil</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/unkabas/dbil">GitHub</a>
+          <a href="https://github.com/unkabas/dbil/releases">Releases</a>
+          <span class="lang-switch" aria-label="Language">
+            <a href="index.html" lang="en" class="is-active" aria-current="true">EN</a>
+            <a href="index.ru.html" lang="ru" hreflang="ru">RU</a>
+          </span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <section class="hero" aria-labelledby="hero-h">
+        <aside class="hero-table" aria-hidden="true">
+          <div class="hero-table-header mono">
+            <span class="hero-table-h-k">public.orders</span>
+            <span class="hero-table-h-sep">·</span>
+            <span>1,284,392 rows</span>
+            <span class="hero-table-h-sep">·</span>
+            <span class="hero-table-h-port">port 4242</span>
+          </div>
+          <div class="hero-table-grid">
+            <div class="hero-table-row hero-table-row-head">
+              <div class="hero-table-th hero-table-th-num">#</div>
+              <div class="hero-table-th"><span>id</span><span class="hero-table-type">integer</span></div>
+              <div class="hero-table-th"><span>customer_email</span><span class="hero-table-type">text</span></div>
+              <div class="hero-table-th hero-table-th-r"><span>amount</span><span class="hero-table-type">numeric</span></div>
+              <div class="hero-table-th"><span>status</span><span class="hero-table-type">text</span></div>
+              <div class="hero-table-th"><span>created_at</span><span class="hero-table-type">timestamptz</span></div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">1</div>
+              <div class="hero-table-cell hero-table-num">1284392</div>
+              <div class="hero-table-cell">alex.chen@example.com</div>
+              <div class="hero-table-cell hero-table-num">$128.50</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:23:11</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">2</div>
+              <div class="hero-table-cell hero-table-num">1284391</div>
+              <div class="hero-table-cell">maria.gomez@example.com</div>
+              <div class="hero-table-cell hero-table-num">$42.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:21:48</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">3</div>
+              <div class="hero-table-cell hero-table-num">1284390</div>
+              <div class="hero-table-cell">user_8821@example.com</div>
+              <div class="hero-table-cell hero-table-num">$890.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-pending">pending</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:20:32</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">4</div>
+              <div class="hero-table-cell hero-table-num">1284389</div>
+              <div class="hero-table-cell">jordan.lee@example.com</div>
+              <div class="hero-table-cell hero-table-num">$14.99</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:18:05</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">5</div>
+              <div class="hero-table-cell hero-table-num">1284388</div>
+              <div class="hero-table-cell hero-table-null">NULL</div>
+              <div class="hero-table-cell hero-table-num">$215.40</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:15:50</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">6</div>
+              <div class="hero-table-cell hero-table-num">1284387</div>
+              <div class="hero-table-cell">sam.taylor@example.com</div>
+              <div class="hero-table-cell hero-table-num">$77.25</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-refunded">refunded</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:14:11</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">7</div>
+              <div class="hero-table-cell hero-table-num">1284386</div>
+              <div class="hero-table-cell">user_9244@example.com</div>
+              <div class="hero-table-cell hero-table-num">$329.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:12:38</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">8</div>
+              <div class="hero-table-cell hero-table-num">1284385</div>
+              <div class="hero-table-cell">priya.kumar@example.com</div>
+              <div class="hero-table-cell hero-table-num">$1,294.50</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:09:27</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">9</div>
+              <div class="hero-table-cell hero-table-num">1284384</div>
+              <div class="hero-table-cell">user_2017@example.com</div>
+              <div class="hero-table-cell hero-table-num">$58.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-pending">pending</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:08:14</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">10</div>
+              <div class="hero-table-cell hero-table-num">1284383</div>
+              <div class="hero-table-cell">nikolai.r@example.com</div>
+              <div class="hero-table-cell hero-table-num">$189.99</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:05:02</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">11</div>
+              <div class="hero-table-cell hero-table-num">1284382</div>
+              <div class="hero-table-cell">user_5503@example.com</div>
+              <div class="hero-table-cell hero-table-num">$32.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-failed">failed</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:02:47</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">12</div>
+              <div class="hero-table-cell hero-table-num">1284381</div>
+              <div class="hero-table-cell">rachel.kim@example.com</div>
+              <div class="hero-table-cell hero-table-num">$456.10</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 14:00:18</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">13</div>
+              <div class="hero-table-cell hero-table-num">1284380</div>
+              <div class="hero-table-cell">user_7716@example.com</div>
+              <div class="hero-table-cell hero-table-num">$92.50</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:58:33</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">14</div>
+              <div class="hero-table-cell hero-table-num">1284379</div>
+              <div class="hero-table-cell">dmitri.v@example.com</div>
+              <div class="hero-table-cell hero-table-num">$678.40</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-refunded">refunded</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:55:21</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">15</div>
+              <div class="hero-table-cell hero-table-num">1284378</div>
+              <div class="hero-table-cell">user_3354@example.com</div>
+              <div class="hero-table-cell hero-table-num">$124.00</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-paid">paid</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:53:12</div>
+            </div>
+            <div class="hero-table-row">
+              <div class="hero-table-cell hero-table-cell-num">16</div>
+              <div class="hero-table-cell hero-table-num">1284377</div>
+              <div class="hero-table-cell">hannah.lee@example.com</div>
+              <div class="hero-table-cell hero-table-num">$231.75</div>
+              <div class="hero-table-cell"><span class="hero-table-status hero-table-status-pending">pending</span></div>
+              <div class="hero-table-cell hero-table-ts">2026-05-31 13:50:44</div>
+            </div>
+          </div>
+          <div class="hero-table-footer mono">
+            <span>loaded 16 of 1,284,392</span>
+            <span class="hero-table-footer-hint">⌃↓ to scroll</span>
+          </div>
+        </aside>
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <h1 id="hero-h" class="display-xl hero-stack">
+              <span class="hero-stack-l1">For&nbsp;your</span>
+              <span class="hero-stack-l2 display-mono">docker-compose</span>
+              <span class="hero-stack-l3">file.</span>
+            </h1>
+            <p class="lede">
+              One container, the React UI baked in,
+              <span class="mono num">~20&nbsp;MB</span> on disk. Schema graph,
+              query editor, live observability, tamper&#8209;evident audit chain.
+              Refuses <code class="inline-code">DDL</code> on
+              production&#8209;tagged connections by default.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="#install">
+                <span>Quick start</span>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 7l4 4 4-4" />
+                </svg>
+              </a>
+              <a class="btn btn-ghost" href="https://github.com/unkabas/dbil">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+                  />
+                </svg>
+                <span>View on GitHub</span>
+              </a>
+            </div>
+            <p class="caption mono">
+              ghcr.io/unkabas/dbil:latest · multi-arch · cosign-signed
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="what" aria-labelledby="what-h">
+        <div class="wrap what-grid">
+          <div class="what-lede">
+            <h2 id="what-h" class="display-m">
+              A workspace, not an admin&nbsp;tool.
+            </h2>
+            <p>
+              Point dbil at a Postgres instance and you get a schema graph built
+              straight from <code class="inline-code">pg_catalog</code>, a SQL
+              editor with autocompletion, the row pager you actually want, and a
+              live observability tab. Production&#8209;tagged connections refuse
+              <code class="inline-code">DDL</code> outright; DML wants an
+              <code class="inline-code">X-Confirm</code> header. Everything
+              you&rsquo;d write a wrapper script for, dbil already does.
+            </p>
+          </div>
+          <ul class="what-facts mono" aria-label="Quick facts">
+            <li>
+              <span class="fact-k">image</span>
+              <span class="fact-v">~20 MB &middot; cosign-signed &middot; multi-arch</span>
+            </li>
+            <li>
+              <span class="fact-k">arch</span>
+              <span class="fact-v">linux + darwin &middot; amd64 + arm64</span>
+            </li>
+            <li>
+              <span class="fact-k">state</span>
+              <span class="fact-v">SQLite at /data/dbil.db, AES-256-GCM envelope</span>
+            </li>
+            <li>
+              <span class="fact-k">ui</span>
+              <span class="fact-v">React, baked in, no CDN at runtime</span>
+            </li>
+            <li>
+              <span class="fact-k">network</span>
+              <span class="fact-v">discovers via docker labels, no exposed ports</span>
+            </li>
+            <li>
+              <span class="fact-k">license</span>
+              <span class="fact-v">Apache 2.0 &middot; no telemetry &middot; no tracking</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="features" aria-labelledby="features-h">
+        <div class="wrap">
+          <h2 id="features-h" class="visually-hidden">What you get</h2>
+
+          <article class="feature feature-shot-live">
+            <div class="feature-shot-live-pin">
+            <div class="feature-table hero-table" data-feature-table>
+              <div class="hero-table-header mono">
+                <span class="hero-table-h-k">public.department</span>
+                <span class="hero-table-h-sep">·</span>
+                <span><span data-filter-total>847</span> rows</span>
+                <span class="hero-table-h-sep">·</span>
+                <span class="hero-table-h-port">port 4242</span>
+              </div>
+              <div class="hero-table-grid feature-table-grid">
+                <div class="hero-table-row hero-table-row-head">
+                  <div class="hero-table-th hero-table-th-num">#</div>
+                  <div class="hero-table-th"><span>id</span><span class="hero-table-type">integer</span></div>
+                  <div class="hero-table-th has-filter">
+                    <span class="hero-table-th-row">
+                      <span>name</span>
+                      <button class="hero-table-filter-btn" type="button" data-filter-toggle="name" aria-label="filter name column" aria-expanded="false">
+                        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M2 3h10l-3.5 5v3l-3 1.5V8z" />
+                        </svg>
+                      </button>
+                    </span>
+                    <span class="hero-table-type">text</span>
+                    <div class="hero-table-filter-pop" data-filter-pop="name" hidden>
+                      <div class="hero-table-filter-input-wrap">
+                        <input class="hero-table-filter-input mono" type="text" placeholder="contains&hellip;" data-filter-input="name" aria-label="filter name column" autocomplete="off" />
+                        <button class="hero-table-filter-clear" type="button" data-filter-clear="name" hidden aria-label="clear filter">&times;</button>
+                      </div>
+                      <div class="hero-table-filter-hint mono">case-insensitive &middot; ESC to close</div>
+                    </div>
+                  </div>
+                  <div class="hero-table-th hero-table-th-r"><span>head_count</span><span class="hero-table-type">integer</span></div>
+                  <div class="hero-table-th hero-table-th-r"><span>budget</span><span class="hero-table-type">numeric</span></div>
+                  <div class="hero-table-th"><span>created_at</span><span class="hero-table-type">timestamptz</span></div>
+                </div>
+                <div data-filter-rows>
+                  <div class="hero-table-row" data-row data-name="engineering">
+                    <div class="hero-table-cell hero-table-cell-num">1</div>
+                    <div class="hero-table-cell hero-table-num">1</div>
+                    <div class="hero-table-cell">Engineering</div>
+                    <div class="hero-table-cell hero-table-num">124</div>
+                    <div class="hero-table-cell hero-table-num">$2,840,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering platform">
+                    <div class="hero-table-cell hero-table-cell-num">2</div>
+                    <div class="hero-table-cell hero-table-num">2</div>
+                    <div class="hero-table-cell">Engineering · Platform</div>
+                    <div class="hero-table-cell hero-table-num">38</div>
+                    <div class="hero-table-cell hero-table-num">$890,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-01-15</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering mobile">
+                    <div class="hero-table-cell hero-table-cell-num">3</div>
+                    <div class="hero-table-cell hero-table-num">3</div>
+                    <div class="hero-table-cell">Engineering · Mobile</div>
+                    <div class="hero-table-cell hero-table-num">22</div>
+                    <div class="hero-table-cell hero-table-num">$510,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-06-08</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering infrastructure">
+                    <div class="hero-table-cell hero-table-cell-num">4</div>
+                    <div class="hero-table-cell hero-table-num">4</div>
+                    <div class="hero-table-cell">Engineering · Infrastructure</div>
+                    <div class="hero-table-cell hero-table-num">18</div>
+                    <div class="hero-table-cell hero-table-num">$680,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-02-12</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="product">
+                    <div class="hero-table-cell hero-table-cell-num">5</div>
+                    <div class="hero-table-cell hero-table-num">5</div>
+                    <div class="hero-table-cell">Product</div>
+                    <div class="hero-table-cell hero-table-num">41</div>
+                    <div class="hero-table-cell hero-table-num">$1,120,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="product research">
+                    <div class="hero-table-cell hero-table-cell-num">6</div>
+                    <div class="hero-table-cell hero-table-num">6</div>
+                    <div class="hero-table-cell">Product · Research</div>
+                    <div class="hero-table-cell hero-table-num">9</div>
+                    <div class="hero-table-cell hero-table-num">$290,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-05-20</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="design">
+                    <div class="hero-table-cell hero-table-cell-num">7</div>
+                    <div class="hero-table-cell hero-table-num">7</div>
+                    <div class="hero-table-cell">Design</div>
+                    <div class="hero-table-cell hero-table-num">17</div>
+                    <div class="hero-table-cell hero-table-num">$445,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-05-12</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="sales">
+                    <div class="hero-table-cell hero-table-cell-num">8</div>
+                    <div class="hero-table-cell hero-table-num">8</div>
+                    <div class="hero-table-cell">Sales</div>
+                    <div class="hero-table-cell hero-table-num">58</div>
+                    <div class="hero-table-cell hero-table-num">$1,890,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="sales enterprise">
+                    <div class="hero-table-cell hero-table-cell-num">9</div>
+                    <div class="hero-table-cell hero-table-num">9</div>
+                    <div class="hero-table-cell">Sales · Enterprise</div>
+                    <div class="hero-table-cell hero-table-num">24</div>
+                    <div class="hero-table-cell hero-table-num">$920,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-04-18</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="marketing">
+                    <div class="hero-table-cell hero-table-cell-num">10</div>
+                    <div class="hero-table-cell hero-table-num">10</div>
+                    <div class="hero-table-cell">Marketing</div>
+                    <div class="hero-table-cell hero-table-num">19</div>
+                    <div class="hero-table-cell hero-table-num">$620,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-08-22</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="marketing growth">
+                    <div class="hero-table-cell hero-table-cell-num">11</div>
+                    <div class="hero-table-cell hero-table-num">11</div>
+                    <div class="hero-table-cell">Marketing · Growth</div>
+                    <div class="hero-table-cell hero-table-num">7</div>
+                    <div class="hero-table-cell hero-table-num">$185,000</div>
+                    <div class="hero-table-cell hero-table-ts">2024-01-09</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="finance">
+                    <div class="hero-table-cell hero-table-cell-num">12</div>
+                    <div class="hero-table-cell hero-table-num">12</div>
+                    <div class="hero-table-cell">Finance</div>
+                    <div class="hero-table-cell hero-table-num">14</div>
+                    <div class="hero-table-cell hero-table-num">$380,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-03-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="legal">
+                    <div class="hero-table-cell hero-table-cell-num">13</div>
+                    <div class="hero-table-cell hero-table-num">13</div>
+                    <div class="hero-table-cell">Legal</div>
+                    <div class="hero-table-cell hero-table-num">6</div>
+                    <div class="hero-table-cell hero-table-num">$245,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-09-30</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="people ops">
+                    <div class="hero-table-cell hero-table-cell-num">14</div>
+                    <div class="hero-table-cell hero-table-num">14</div>
+                    <div class="hero-table-cell">People Ops</div>
+                    <div class="hero-table-cell hero-table-num">11</div>
+                    <div class="hero-table-cell hero-table-num">$290,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-11-14</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering backend">
+                    <div class="hero-table-cell hero-table-cell-num">15</div>
+                    <div class="hero-table-cell hero-table-num">15</div>
+                    <div class="hero-table-cell">Engineering · Backend Core</div>
+                    <div class="hero-table-cell hero-table-num">31</div>
+                    <div class="hero-table-cell hero-table-num">$740,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-04-15</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering frontend">
+                    <div class="hero-table-cell hero-table-cell-num">16</div>
+                    <div class="hero-table-cell hero-table-num">16</div>
+                    <div class="hero-table-cell">Engineering · Frontend</div>
+                    <div class="hero-table-cell hero-table-num">19</div>
+                    <div class="hero-table-cell hero-table-num">$465,000</div>
+                    <div class="hero-table-cell hero-table-ts">2021-09-21</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="engineering ml ai">
+                    <div class="hero-table-cell hero-table-cell-num">17</div>
+                    <div class="hero-table-cell hero-table-num">17</div>
+                    <div class="hero-table-cell">Engineering · ML &amp; AI</div>
+                    <div class="hero-table-cell hero-table-num">12</div>
+                    <div class="hero-table-cell hero-table-num">$680,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-08-04</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="sales customer success">
+                    <div class="hero-table-cell hero-table-cell-num">18</div>
+                    <div class="hero-table-cell hero-table-num">18</div>
+                    <div class="hero-table-cell">Sales · Customer Success</div>
+                    <div class="hero-table-cell hero-table-num">18</div>
+                    <div class="hero-table-cell hero-table-num">$510,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-07-17</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="marketing content">
+                    <div class="hero-table-cell hero-table-cell-num">19</div>
+                    <div class="hero-table-cell hero-table-num">19</div>
+                    <div class="hero-table-cell">Marketing · Content</div>
+                    <div class="hero-table-cell hero-table-num">6</div>
+                    <div class="hero-table-cell hero-table-num">$145,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-09-15</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="finance accounting">
+                    <div class="hero-table-cell hero-table-cell-num">20</div>
+                    <div class="hero-table-cell hero-table-num">20</div>
+                    <div class="hero-table-cell">Finance · Accounting</div>
+                    <div class="hero-table-cell hero-table-num">9</div>
+                    <div class="hero-table-cell hero-table-num">$235,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-02-08</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="people recruiting">
+                    <div class="hero-table-cell hero-table-cell-num">21</div>
+                    <div class="hero-table-cell hero-table-num">21</div>
+                    <div class="hero-table-cell">People · Recruiting</div>
+                    <div class="hero-table-cell hero-table-num">5</div>
+                    <div class="hero-table-cell hero-table-num">$165,000</div>
+                    <div class="hero-table-cell hero-table-ts">2022-05-23</div>
+                  </div>
+                  <div class="hero-table-row" data-row data-name="people learning development">
+                    <div class="hero-table-cell hero-table-cell-num">22</div>
+                    <div class="hero-table-cell hero-table-num">22</div>
+                    <div class="hero-table-cell">People · L&amp;D</div>
+                    <div class="hero-table-cell hero-table-num">3</div>
+                    <div class="hero-table-cell hero-table-num">$95,000</div>
+                    <div class="hero-table-cell hero-table-ts">2023-11-08</div>
+                  </div>
+                </div>
+              </div>
+              <div class="hero-table-footer mono">
+                <span><span data-filter-shown>22</span> shown · <span data-filter-loaded>22</span> loaded · 847 in table</span>
+                <button type="button" class="hero-table-footer-hint" data-filter-hint>try filtering &ldquo;engineering&rdquo;</button>
+              </div>
+            </div>
+            <div class="feature-overlay" aria-hidden="true"></div>
+            <div class="feature-copy-wrap">
+              <div class="feature-copy">
+                <h3 class="display-s">Page through real rows.</h3>
+                <p>
+                  Virtualized table for million&#8209;row datasets, column resize,
+                  inline filter. Click the filter glyph on the
+                  <code class="inline-code">name</code> header to try one live.
+                  Export the filter result as
+                  <code class="inline-code">JSON</code>,
+                  <code class="inline-code">CSV</code>, or
+                  <code class="inline-code">INSERT</code> statements.
+                  Production&#8209;tag rules apply: a
+                  <code class="inline-code">DELETE</code> without
+                  <code class="inline-code">WHERE</code> is refused before it
+                  leaves the browser.
+                </p>
+              </div>
+            </div>
+            </div>
+          </article>
+
+          <article class="feature feature-shot-live">
+            <div class="feature-shot-live-pin">
+            <div class="feature-dashboard" data-feature-dashboard>
+              <div class="hero-table-header mono">
+                <span class="hero-table-h-k">observability</span>
+                <span class="hero-table-h-sep">·</span>
+                <span>live &middot; 5 s tick</span>
+                <span class="hero-table-h-sep">·</span>
+                <span class="hero-table-h-port">port 4242</span>
+              </div>
+              <div class="feature-tiles">
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">TPS</span>
+                  <span class="feature-tile-value mono num" data-tick="tps" data-tick-base="128" data-tick-vary="14">128</span>
+                  <span class="feature-tile-trend mono">&uarr; 12% w/w</span>
+                </div>
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">cache hit</span>
+                  <span class="feature-tile-value mono num" data-tick="cache" data-tick-base="98.4" data-tick-vary="0.8" data-tick-suffix="%" data-tick-decimal="1">98.4%</span>
+                  <span class="feature-tile-trend mono">&mdash; stable</span>
+                </div>
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">sessions</span>
+                  <span class="feature-tile-value mono num" data-tick="sessions" data-tick-base="47" data-tick-vary="6">47</span>
+                  <span class="feature-tile-trend mono">&uarr; 3 vs 10 min ago</span>
+                </div>
+                <div class="feature-tile">
+                  <span class="feature-tile-label mono">replication lag</span>
+                  <span class="feature-tile-value mono num" data-tick="lag" data-tick-base="12" data-tick-vary="8" data-tick-suffix="ms">12ms</span>
+                  <span class="feature-tile-trend mono">&mdash; within target</span>
+                </div>
+              </div>
+              <div class="feature-dashboard-section">
+                <div class="feature-dashboard-sec-h mono">
+                  <span class="feature-dash-sec-k">slow queries</span>
+                  <span class="hero-table-h-sep">&middot;</span>
+                  <span>last 5 min &middot; <span data-tick="slow-count" data-tick-base="7" data-tick-vary="3">7</span> over 500&nbsp;ms</span>
+                </div>
+                <div class="feature-slow-list mono">
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q1" data-tick-base="1284" data-tick-vary="180" data-tick-suffix="ms">1284ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> public.orders <span class="c-kw">WHERE</span> status = $1 <span class="c-kw">ORDER BY</span> created_at <span class="c-kw">DESC</span> <span class="c-kw">LIMIT</span> 50</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q2" data-tick-base="912" data-tick-vary="120" data-tick-suffix="ms">912ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> count(*) <span class="c-kw">FROM</span> public.events <span class="c-kw">WHERE</span> created_at &gt; now() - <span class="c-str">'1 day'</span>::interval</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q3" data-tick-base="684" data-tick-vary="90" data-tick-suffix="ms">684ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">UPDATE</span> public.user_profile <span class="c-kw">SET</span> last_seen = $1 <span class="c-kw">WHERE</span> id <span class="c-kw">IN</span> (&hellip;)</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q4" data-tick-base="542" data-tick-vary="70" data-tick-suffix="ms">542ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> d.name, count(e.id) <span class="c-kw">FROM</span> public.department d <span class="c-kw">LEFT JOIN</span> public.employee e &hellip;</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q5" data-tick-base="508" data-tick-vary="60" data-tick-suffix="ms">508ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">UPDATE</span> public.session <span class="c-kw">SET</span> refreshed_at = $1 <span class="c-kw">WHERE</span> token = $2 <span class="c-kw">RETURNING</span> user_id</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q6" data-tick-base="487" data-tick-vary="55" data-tick-suffix="ms">487ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> u.id, u.email <span class="c-kw">FROM</span> public.user u <span class="c-kw">WHERE</span> u.created_at &gt; now() - <span class="c-str">'7 days'</span>::interval</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q7" data-tick-base="412" data-tick-vary="48" data-tick-suffix="ms">412ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">DELETE</span> <span class="c-kw">FROM</span> public.audit_event <span class="c-kw">WHERE</span> created_at &lt; now() - <span class="c-str">'90 days'</span>::interval</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q8" data-tick-base="395" data-tick-vary="45" data-tick-suffix="ms">395ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> t.* <span class="c-kw">FROM</span> public.task t <span class="c-kw">WHERE</span> t.assigned_to = $1 <span class="c-kw">AND</span> t.completed = false <span class="c-kw">ORDER BY</span> created_at <span class="c-kw">DESC</span></code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q9" data-tick-base="357" data-tick-vary="40" data-tick-suffix="ms">357ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> count(*) <span class="c-kw">FROM</span> public.order_item oi <span class="c-kw">JOIN</span> public.order o <span class="c-kw">ON</span> oi.order_id = o.id <span class="c-kw">WHERE</span> o.status = $1</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q10" data-tick-base="322" data-tick-vary="36" data-tick-suffix="ms">322ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">INSERT INTO</span> public.audit_event (entity_type, entity_id, payload, prev_hash) <span class="c-kw">VALUES</span> ($1, $2, $3, $4)</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q11" data-tick-base="298" data-tick-vary="32" data-tick-suffix="ms">298ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">SELECT</span> a.* <span class="c-kw">FROM</span> public.address a <span class="c-kw">WHERE</span> a.user_id <span class="c-kw">IN</span> (<span class="c-kw">SELECT</span> id <span class="c-kw">FROM</span> public.user <span class="c-kw">WHERE</span> active = true)</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                  <div class="feature-slow-row">
+                    <span class="feature-slow-time" data-tick="q12" data-tick-base="273" data-tick-vary="28" data-tick-suffix="ms">273ms</span>
+                    <code class="feature-slow-q"><span class="c-kw">UPDATE</span> public.connection <span class="c-kw">SET</span> last_ping_at = $1, status = <span class="c-str">'ok'</span> <span class="c-kw">WHERE</span> id = $2</code>
+                    <button type="button" class="feature-slow-kill mono" tabindex="-1" aria-hidden="true">kill</button>
+                  </div>
+                </div>
+              </div>
+              <div class="hero-table-footer mono">
+                <span>advisor: <strong>3 unused indexes</strong> on public.orders &middot; <strong>1 lock chain</strong> resolved at <span data-tick="lock-time" data-tick-base="14" data-tick-vary="3" data-tick-suffix=":22:08" data-tick-int="1">14:22:08</span></span>
+                <span class="hero-table-footer-hint">⌃R to refresh</span>
+              </div>
+            </div>
+            <div class="feature-overlay" aria-hidden="true"></div>
+            <div class="feature-copy-wrap">
+              <div class="feature-copy">
+                <h3 class="display-s">Watch the database breathe.</h3>
+                <p>
+                  TPS, cache&#8209;hit ratio, replication lag, slow queries, lock
+                  chains, unused indexes. If something is blocking five other
+                  sessions, hit Kill and dbil sends
+                  <code class="inline-code">pg_terminate_backend</code>. The
+                  advisor reads
+                  <code class="inline-code">pg_stat_user_indexes</code> and tells
+                  you what to drop.
+                </p>
+              </div>
+            </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="scope" aria-labelledby="scope-h">
+        <div class="wrap scope-grid">
+          <header class="scope-head">
+            <h2 id="scope-h" class="display-m">
+              What dbil doesn&rsquo;t&nbsp;ship.
+            </h2>
+            <p class="scope-lede">
+              Every absent feature is a deliberate cut. The container stays
+              small, the surface stays legible, and the install stays one
+              service in your compose file because of these refusals, not in
+              spite of them.
+            </p>
+          </header>
+          <ul class="scope-list mono" aria-label="Things dbil does not do">
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">no telemetry</span>
+              <span class="scope-note">the image phones home to nothing, ever.</span>
+            </li>
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">no cloud sync</span>
+              <span class="scope-note">state lives on your disk, encrypted at rest.</span>
+            </li>
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">no AI chat bridge</span>
+              <span class="scope-note">the editor doesn&rsquo;t write SQL for you. Bring your own query.</span>
+            </li>
+            <li>
+              <span class="scope-x" aria-hidden="true">&times;</span>
+              <span class="scope-item">no team-RBAC UI</span>
+              <span class="scope-note">roles live in the Postgres connection, not in dbil.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="safety" aria-labelledby="safety-h">
+        <div class="wrap">
+          <header class="safety-head">
+            <h2 id="safety-h" class="safety-title">Refuses what you didn&rsquo;t mean.</h2>
+            <p class="safety-lede">
+              A connection&rsquo;s tag is a contract. Three refusals carry the
+              weight; the rest is in the docs.
+            </p>
+          </header>
+
+          <div class="safety-rows">
+            <div class="safety-row">
+              <span class="safety-row-num">01</span>
+              <h3 class="safety-row-title">Production refused at the wire.</h3>
+              <p class="safety-row-summary">
+                <strong>DDL</strong> blocked. <strong>DML</strong> needs
+                <span class="safety-chip">X-Confirm: yes</span>.
+                <strong>DELETE/UPDATE</strong> without <strong>WHERE</strong>
+                refused above <span class="safety-chip">local</span>.
+              </p>
+              <span class="safety-chip">HTTP 412</span>
+            </div>
+            <div class="safety-row">
+              <span class="safety-row-num">02</span>
+              <h3 class="safety-row-title">Plaintext credentials, refused.</h3>
+              <p class="safety-row-summary">
+                Per-connection DEK,
+                <span class="safety-chip">AES-256-GCM</span>. Six master-key
+                loaders; env-var prints a warning.
+              </p>
+              <span class="safety-chip safety-chip-warn">env var &#9888;</span>
+            </div>
+            <div class="safety-row">
+              <span class="safety-row-num">03</span>
+              <h3 class="safety-row-title">Tamper shows up the first scan.</h3>
+              <p class="safety-row-summary">
+                <span class="safety-chip">SHA-256</span> chain hash on every
+                audit row. <span class="safety-chip">VerifyChain</span> flags
+                mutation immediately.
+              </p>
+              <span class="safety-chip">CI-gated</span>
+            </div>
+          </div>
+
+          <p class="safety-foot">
+            <span>Full refusal contract &middot;</span>
+            <a href="docs.html">docs &rarr;</a>
+          </p>
+        </div>
+      </section>
+
+      <section class="install" aria-labelledby="install-h" id="install" data-install-active="compose">
+        <!-- impeccable-variants-start 4eb638d8 -->
+        <div data-impeccable-variants="4eb638d8" data-impeccable-variant-count="2" style="display: contents">
+          <!-- Original -->
+          <div data-impeccable-variant="original">
+                    <div class="wrap">
+                      <header class="install-head">
+                        <h2 id="install-h" class="install-title">Drop it into your compose.</h2>
+                        <p class="install-lede">
+                          Two labels on your Postgres service, a shared network, dbil with the Docker socket. First run prints the admin password to the logs and to <code class="inline-code">/data/initial-credentials.txt</code>.
+                        </p>
+                      </header>
+
+                      <div class="install-panel">
+                        <div class="install-tabs" role="tablist" aria-label="Install steps">
+                          <button class="install-tab" type="button" role="tab" data-install-tab="compose" aria-selected="true">docker-compose.yml</button>
+                          <button class="install-tab" type="button" role="tab" data-install-tab="start" aria-selected="false">start</button>
+                          <button class="install-tab" type="button" role="tab" data-install-tab="no-docker" aria-selected="false">no docker</button>
+                          <span class="install-tab-spacer"></span>
+                          <button class="install-copy" type="button" data-copy="install-pane-active" aria-label="Copy active snippet">Copy</button>
+                        </div>
+
+                        <div class="install-pane" data-install-pane="compose" role="tabpanel">
+                          <pre id="compose" class="mono"><code><span class="c-kw">services</span>:
+              <span class="c-kw">postgres</span>:
+                image: postgres:16
+                environment:
+                  POSTGRES_USER: app
+                  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                  POSTGRES_DB: appdb
+                labels:
+                  dbil.enable: <span class="c-str">"true"</span>
+                  dbil.alias:  <span class="c-str">"App DB"</span>
+                  dbil.tag:    <span class="c-str">"dev"</span>
+                  dbil.creds.username_env: <span class="c-str">"POSTGRES_USER"</span>
+                  dbil.creds.password_env: <span class="c-str">"POSTGRES_PASSWORD"</span>
+                  dbil.creds.database_env: <span class="c-str">"POSTGRES_DB"</span>
+                networks: [appnet]
+
+              <span class="c-kw">dbil</span>:
+                image: ghcr.io/unkabas/dbil:latest
+                command: [<span class="c-str">"serve"</span>]
+                ports: [<span class="c-str">"4242:4242"</span>]
+                volumes:
+                  - dbil_data:/data
+                  - /var/run/docker.sock:/var/run/docker.sock:ro
+                environment:
+                  DBIL_DISCOVER: <span class="c-str">"docker"</span>
+                  DBIL_NETWORK:  <span class="c-str">"appnet"</span>
+                networks: [appnet]
+
+            <span class="c-kw">volumes</span>: { dbil_data: }
+            <span class="c-kw">networks</span>: { appnet: { name: appnet } }</code></pre>
+                        </div>
+
+                        <div class="install-pane" data-install-pane="start" role="tabpanel" hidden>
+                          <pre id="run" class="mono"><code><span class="c-com"># set a postgres password</span>
+            echo <span class="c-str">"POSTGRES_PASSWORD=$(openssl rand -base64 24)"</span> &gt; .env
+
+            <span class="c-com"># start it; admin password prints to the dbil logs</span>
+            docker compose up -d</code></pre>
+                        </div>
+
+                        <div class="install-pane" data-install-pane="no-docker" role="tabpanel" hidden>
+                          <pre id="binary" class="mono"><code><span class="c-com"># prebuilt for linux/{amd64,arm64} and darwin/{amd64,arm64}</span>
+            DBIL_DATA_DIR=./dbil-data \
+              ./dbil serve</code></pre>
+                        </div>
+                      </div>
+
+                      <p class="install-foot">
+                        <span><span class="install-foot-key">Port:</span> 4242</span>
+                        <span><span class="install-foot-key">First-run secret:</span> /data/initial-credentials.txt</span>
+                        <span><a href="docs.html">Full docs &rarr;</a></span>
+                      </p>
+                    </div>
+          </div>
+          <!-- Variants: insert below this line -->
+<style data-impeccable-css="4eb638d8">
+/* ------- V1: single vertical block (heading on top, code below) ------- */
+@scope ([data-impeccable-variant="1"]) {
+  :scope > .install-c1 { display: block; }
+  :scope .c1-head {
+    max-width: 70ch;
+    margin-bottom: clamp(1.25rem, 2.5vw, 1.875rem);
+  }
+  :scope .c1-title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: var(--t-display-m); letter-spacing: -0.028em;
+    color: var(--on-coal); margin: 0 0 0.625rem 0;
+    text-wrap: balance; max-width: 22ch;
+  }
+  :scope .c1-lede {
+    color: var(--on-coal-mute);
+    font-size: 0.9375rem; line-height: 1.55;
+    margin: 0; max-width: 60ch;
+  }
+  :scope .c1-block {
+    background: var(--coal-2);
+    border: 1px solid var(--coal-rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  :scope .c1-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.5rem 0.875rem;
+    background: var(--coal-3);
+    border-bottom: 1px solid var(--coal-rule);
+    font-family: var(--font-mono); font-size: 0.75rem;
+    color: var(--on-coal-mute); letter-spacing: 0.02em;
+  }
+  :scope .c1-copy {
+    appearance: none; background: transparent;
+    border: 1px solid var(--coal-rule);
+    color: var(--on-coal-mute);
+    font-family: var(--font-mono); font-size: 0.7rem;
+    padding: 0.2rem 0.5rem; border-radius: 3px;
+    cursor: pointer;
+  }
+  :scope .c1-block pre {
+    margin: 0;
+    padding: calc(var(--p-scale, 1) * 0.875rem) calc(var(--p-scale, 1) * 1.125rem);
+    font-family: var(--font-mono);
+    font-size: calc(var(--p-scale, 1) * 0.8125rem);
+    line-height: 1.55;
+    color: var(--on-coal);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  :scope .c1-block pre .c-kw { color: var(--c-kw-d); font-weight: 600; }
+  :scope .c1-block pre .c-str { color: var(--c-str-d); }
+  :scope .c1-block pre .c-com { color: var(--c-com-d); font-style: italic; }
+  :scope .c1-foot {
+    margin-top: 1rem;
+    display: flex; flex-wrap: wrap;
+    gap: 0.875rem 1.25rem; align-items: baseline;
+    font-family: var(--font-mono); font-size: 0.8125rem;
+    color: var(--on-coal-mute);
+  }
+  :scope .c1-foot-key { color: var(--on-coal); }
+  :scope .c1-foot a {
+    color: var(--on-coal); text-decoration: none;
+    border-bottom: 1px solid var(--brand);
+    padding-bottom: 1px;
+  }
+  :scope .c1-foot a:hover { color: var(--brand-bright); border-bottom-color: var(--brand-bright); }
+}
+
+/* ------- V2: side-by-side (copy left, code right) ------- */
+@scope ([data-impeccable-variant="2"]) {
+  :scope > .install-c2 { display: block; }
+  :scope .c2-grid {
+    display: grid;
+    grid-template-columns: minmax(0, calc(0.6fr + var(--p-copy-width, 0.4) * 1fr)) minmax(0, 1.4fr);
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+    align-items: start;
+  }
+  :scope .c2-copy {
+    display: flex; flex-direction: column;
+    gap: 0.875rem;
+  }
+  :scope .c2-title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: var(--t-display-m); letter-spacing: -0.028em;
+    color: var(--on-coal); margin: 0;
+    text-wrap: balance; max-width: 16ch;
+  }
+  :scope .c2-lede {
+    color: var(--on-coal-mute);
+    font-size: 0.9375rem; line-height: 1.55;
+    margin: 0; max-width: 44ch;
+  }
+  :scope .c2-foot {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--coal-rule-soft);
+    display: flex; flex-direction: column; gap: 0.5rem;
+    font-family: var(--font-mono); font-size: 0.8125rem;
+    color: var(--on-coal-mute);
+  }
+  :scope .c2-foot-row { display: flex; gap: 0.5rem; }
+  :scope .c2-foot-key { color: var(--on-coal); min-width: 5.5rem; }
+  :scope .c2-foot a {
+    color: var(--on-coal); text-decoration: none;
+    border-bottom: 1px solid var(--brand);
+    padding-bottom: 1px;
+  }
+  :scope .c2-foot a:hover { color: var(--brand-bright); border-bottom-color: var(--brand-bright); }
+  :scope .c2-block {
+    background: var(--coal-2);
+    border: 1px solid var(--coal-rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  :scope .c2-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.5rem 0.875rem;
+    background: var(--coal-3);
+    border-bottom: 1px solid var(--coal-rule);
+    font-family: var(--font-mono); font-size: 0.75rem;
+    color: var(--on-coal-mute); letter-spacing: 0.02em;
+  }
+  :scope .c2-copy-btn {
+    appearance: none; background: transparent;
+    border: 1px solid var(--coal-rule);
+    color: var(--on-coal-mute);
+    font-family: var(--font-mono); font-size: 0.7rem;
+    padding: 0.2rem 0.5rem; border-radius: 3px;
+    cursor: pointer;
+  }
+  :scope .c2-block pre {
+    margin: 0;
+    padding: clamp(0.875rem, 1.5vw, 1.125rem);
+    font-family: var(--font-mono);
+    font-size: var(--t-mono); line-height: 1.55;
+    color: var(--on-coal);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  :scope .c2-block pre .c-kw { color: var(--c-kw-d); font-weight: 600; }
+  :scope .c2-block pre .c-str { color: var(--c-str-d); }
+  :scope .c2-block pre .c-com { color: var(--c-com-d); font-style: italic; }
+  @media (max-width: 880px) {
+    :scope .c2-grid { grid-template-columns: 1fr; }
+  }
+}
+</style>
+
+<div data-impeccable-variant="1" data-impeccable-params='[
+  {"id":"scale","kind":"range","min":0.85,"max":1.1,"step":0.02,"default":1,"label":"Code scale"}
+]'>
+  <div class="install-c1">
+    <header class="c1-head">
+      <h2 class="c1-title">Drop it into your compose.</h2>
+      <p class="c1-lede">
+        Two labels on your Postgres service, a shared network, dbil with the Docker socket. First run prints the admin password to the logs and to <code class="inline-code">/data/initial-credentials.txt</code>.
+      </p>
+    </header>
+
+    <figure class="c1-block">
+      <figcaption class="c1-bar">
+        <span>docker-compose.yml</span>
+        <button class="c1-copy" type="button">Copy</button>
+      </figcaption>
+      <pre><code><span class="c-kw">services</span>:
+  <span class="c-kw">postgres</span>:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: appdb
+    labels:
+      dbil.enable: <span class="c-str">"true"</span>
+      dbil.alias:  <span class="c-str">"App DB"</span>
+      dbil.tag:    <span class="c-str">"dev"</span>
+      dbil.creds.username_env: <span class="c-str">"POSTGRES_USER"</span>
+      dbil.creds.password_env: <span class="c-str">"POSTGRES_PASSWORD"</span>
+      dbil.creds.database_env: <span class="c-str">"POSTGRES_DB"</span>
+    networks: [appnet]
+
+  <span class="c-kw">dbil</span>:
+    image: ghcr.io/unkabas/dbil:latest
+    command: [<span class="c-str">"serve"</span>]
+    ports: [<span class="c-str">"4242:4242"</span>]
+    volumes:
+      - dbil_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DBIL_DISCOVER: <span class="c-str">"docker"</span>
+      DBIL_NETWORK:  <span class="c-str">"appnet"</span>
+    networks: [appnet]
+
+<span class="c-kw">volumes</span>: { dbil_data: }
+<span class="c-kw">networks</span>: { appnet: { name: appnet } }</code></pre>
+    </figure>
+
+    <p class="c1-foot">
+      <span><span class="c1-foot-key">Port:</span> 4242</span>
+      <span><span class="c1-foot-key">First-run secret:</span> /data/initial-credentials.txt</span>
+      <span><a href="docs.html">Full docs &rarr;</a></span>
+    </p>
+  </div>
+</div>
+
+<div data-impeccable-variant="2" style="display: none" data-impeccable-params='[
+  {"id":"copy-width","kind":"range","min":0.25,"max":0.7,"step":0.05,"default":0.4,"label":"Copy column width"}
+]'>
+  <div class="install-c2">
+    <div class="c2-grid">
+      <div class="c2-copy">
+        <h2 class="c2-title">Drop it into your compose.</h2>
+        <p class="c2-lede">
+          Two labels on your Postgres service, a shared network, dbil with the Docker socket. First run prints the admin password to the logs and to <code class="inline-code">/data/initial-credentials.txt</code>.
+        </p>
+        <div class="c2-foot">
+          <div class="c2-foot-row"><span class="c2-foot-key">Port</span><span>4242</span></div>
+          <div class="c2-foot-row"><span class="c2-foot-key">Secret</span><span>/data/initial-credentials.txt</span></div>
+          <div class="c2-foot-row"><span class="c2-foot-key">Docs</span><a href="docs.html">docs.html &rarr;</a></div>
+        </div>
+      </div>
+
+      <figure class="c2-block">
+        <figcaption class="c2-bar">
+          <span>docker-compose.yml</span>
+          <button class="c2-copy-btn" type="button">Copy</button>
+        </figcaption>
+        <pre><code><span class="c-kw">services</span>:
+  <span class="c-kw">postgres</span>:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: appdb
+    labels:
+      dbil.enable: <span class="c-str">"true"</span>
+      dbil.alias:  <span class="c-str">"App DB"</span>
+      dbil.tag:    <span class="c-str">"dev"</span>
+      dbil.creds.username_env: <span class="c-str">"POSTGRES_USER"</span>
+      dbil.creds.password_env: <span class="c-str">"POSTGRES_PASSWORD"</span>
+      dbil.creds.database_env: <span class="c-str">"POSTGRES_DB"</span>
+    networks: [appnet]
+
+  <span class="c-kw">dbil</span>:
+    image: ghcr.io/unkabas/dbil:latest
+    command: [<span class="c-str">"serve"</span>]
+    ports: [<span class="c-str">"4242:4242"</span>]
+    volumes:
+      - dbil_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DBIL_DISCOVER: <span class="c-str">"docker"</span>
+      DBIL_NETWORK:  <span class="c-str">"appnet"</span>
+    networks: [appnet]
+
+<span class="c-kw">volumes</span>: { dbil_data: }
+<span class="c-kw">networks</span>: { appnet: { name: appnet } }</code></pre>
+      </figure>
+    </div>
+  </div>
+</div>
+        </div>
+        <!-- impeccable-variants-end 4eb638d8 -->
+      </section>
+
+      <section class="verify" aria-labelledby="verify-h">
+        <div class="wrap verify-grid">
+          <div class="verify-copy">
+            <h2 id="verify-h" class="display-m">Verify before you run.</h2>
+            <p>
+              Every release tag publishes a multi&#8209;arch image signed with
+              cosign keyless OIDC. SPDX SBOMs are attached to each
+              <a href="https://github.com/unkabas/dbil/releases">GitHub release</a>.
+              The state file (<code class="inline-code">/data/dbil.db</code>)
+              is application&#8209;encrypted: a leaked
+              <code class="inline-code">.db</code> file is still ciphertext
+              without the master key.
+            </p>
+          </div>
+          <figure class="codeblock">
+            <figcaption class="codeblock-bar mono">
+              <span>cosign verify</span>
+              <button
+                class="copy-btn"
+                type="button"
+                data-copy="cosign"
+                aria-label="Copy cosign verify command"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <rect x="5" y="5" width="9" height="9" rx="1.5" />
+                  <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+                </svg>
+                <span class="copy-label">Copy</span>
+              </button>
+            </figcaption>
+            <pre id="cosign" class="mono"><code><span class="c-com"># verifies the keyless OIDC signature against the GitHub identity</span>
+cosign verify ghcr.io/unkabas/dbil:latest \
+  --certificate-identity-regexp=<span class="c-str">'https://github.com/unkabas/dbil/.*'</span> \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com</code></pre>
+          </figure>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div class="wrap footer-grid">
+        <div class="footer-brand">
+          <a class="mark mark-footer" href="#" aria-label="dbil home">
+            <span class="mark-name">dbil</span>
+          </a>
+          <p class="footer-blurb">
+            A Postgres workspace for your
+            <code class="inline-code">docker&#8209;compose</code> file. Built in
+            the open, shipped with no telemetry.
+          </p>
+        </div>
+
+        <nav class="footer-col" aria-label="Repository">
+          <h4 class="footer-h mono">Repo</h4>
+          <a href="https://github.com/unkabas/dbil">GitHub</a>
+          <a href="https://github.com/unkabas/dbil/releases">Releases</a>
+          <a href="https://github.com/unkabas/dbil/issues">Issues</a>
+        </nav>
+
+        <nav class="footer-col" aria-label="Docs">
+          <h4 class="footer-h mono">Docs</h4>
+          <a href="docs.html">Quick start</a>
+          <a href="https://github.com/unkabas/dbil#readme">README</a>
+          <a href="https://github.com/unkabas/dbil/blob/main/SECURITY.md">Security model</a>
+          <a href="https://github.com/unkabas/dbil/blob/main/CONTRIBUTING.md">Contributing</a>
+        </nav>
+
+        <nav class="footer-col" aria-label="Legal">
+          <h4 class="footer-h mono">Legal</h4>
+          <a href="https://github.com/unkabas/dbil/blob/main/LICENSE">Apache 2.0</a>
+          <span class="footer-static">No telemetry</span>
+          <span class="footer-static">No tracking</span>
+        </nav>
+      </div>
+      <div class="wrap footer-bottom mono">
+        <span>dbil — hand built · ships in the open</span>
+        <button type="button" data-print class="footer-print">
+          print this page as a field card &rarr;
+        </button>
+        <span>ghcr.io/unkabas/dbil:latest</span>
+      </div>
+    </footer>
+
+    <div class="toast" role="status" aria-live="polite" data-toast hidden>Copied</div>
+
+    <script>
+      (() => {
+        const toast = document.querySelector("[data-toast]");
+        let toastTimer = 0;
+        const showToast = (msg) => {
+          if (!toast) return;
+          toast.textContent = msg;
+          toast.hidden = false;
+          toast.classList.add("toast-show");
+          clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => {
+            toast.classList.remove("toast-show");
+            window.setTimeout(() => {
+              toast.hidden = true;
+            }, 200);
+          }, 1600);
+        };
+
+        document.querySelectorAll(".copy-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-copy");
+            if (!id) return;
+            const src = document.getElementById(id);
+            if (!src) return;
+            const text = src.innerText;
+            try {
+              await navigator.clipboard.writeText(text);
+              showToast("Copied");
+              btn.classList.add("copy-btn-ok");
+              window.setTimeout(() => btn.classList.remove("copy-btn-ok"), 1400);
+            } catch {
+              showToast("Copy failed — select manually");
+            }
+          });
+        });
+
+        /* Print as field card. */
+        document.querySelectorAll("[data-print]").forEach((btn) => {
+          btn.addEventListener("click", () => window.print());
+        });
+
+        /* Install tabs: switch which pane is visible. The Copy button reads the
+           currently active pane (data-copy="install-pane-active"). */
+        document.querySelectorAll(".install").forEach((section) => {
+          const tabs = section.querySelectorAll(".install-tab[data-install-tab]");
+          const panes = section.querySelectorAll(".install-pane[data-install-pane]");
+          const setActive = (key) => {
+            section.setAttribute("data-install-active", key);
+            tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.installTab === key ? "true" : "false"));
+            panes.forEach((p) => {
+              if (p.dataset.installPane === key) p.removeAttribute("hidden");
+              else p.setAttribute("hidden", "");
+            });
+          };
+          tabs.forEach((t) => t.addEventListener("click", () => setActive(t.dataset.installTab)));
+
+          const copyBtn = section.querySelector('[data-copy="install-pane-active"]');
+          if (copyBtn) {
+            copyBtn.addEventListener("click", async () => {
+              const active = section.getAttribute("data-install-active") || "compose";
+              const pre = section.querySelector(`.install-pane[data-install-pane="${active}"] pre`);
+              if (!pre) return;
+              try {
+                await navigator.clipboard.writeText(pre.innerText);
+                showToast("Copied");
+                copyBtn.classList.add("copy-btn-ok");
+                window.setTimeout(() => copyBtn.classList.remove("copy-btn-ok"), 1400);
+              } catch {
+                showToast("Copy failed — select manually");
+              }
+            });
+          }
+        });
+
+        /* Scroll-driven masthead state: when the user has left the hero, the
+           masthead bottom rule commits to brand. Passive, rAF-throttled. */
+        const masthead = document.querySelector(".masthead");
+        let scrollScheduled = false;
+        const updateMastheadState = () => {
+          scrollScheduled = false;
+          if (!masthead) return;
+          const scrolled = window.scrollY > 8;
+          if (scrolled !== masthead.classList.contains("is-scrolled")) {
+            masthead.classList.toggle("is-scrolled", scrolled);
+          }
+        };
+        window.addEventListener("scroll", () => {
+          if (scrollScheduled) return;
+          scrollScheduled = true;
+          window.requestAnimationFrame(updateMastheadState);
+        }, { passive: true });
+        updateMastheadState();
+
+        /* Feature table live filter — matches the React app's column-filter UX
+           (click filter glyph → popup with text input → live client-side
+           substring match on the row's data-{col} attribute). Multiple columns
+           AND-combine. Outside-click or ESC closes the popup; filter state
+           persists across opens. */
+        document.querySelectorAll("[data-feature-table]").forEach((table) => {
+          const rowsRoot = table.querySelector("[data-filter-rows]");
+          if (!rowsRoot) return;
+          const rows = rowsRoot.querySelectorAll("[data-row]");
+          const shownEl = table.querySelector("[data-filter-shown]");
+          const loadedEl = table.querySelector("[data-filter-loaded]");
+          const filterState = {};
+
+          const apply = () => {
+            let shown = 0;
+            rows.forEach((row) => {
+              let match = true;
+              for (const col in filterState) {
+                const q = filterState[col];
+                if (!q) continue;
+                const v = (row.dataset[col] || "").toLowerCase();
+                if (!v.includes(q.toLowerCase())) { match = false; break; }
+              }
+              if (match) { row.removeAttribute("data-filtered-out"); shown++; }
+              else { row.setAttribute("data-filtered-out", ""); }
+            });
+            if (shownEl) shownEl.textContent = shown;
+            if (loadedEl) loadedEl.textContent = shown;
+          };
+
+          const closeAll = () => {
+            table.querySelectorAll("[data-filter-pop]").forEach((p) => { p.hidden = true; });
+            table.querySelectorAll("[data-filter-toggle]").forEach((b) => {
+              b.classList.remove("is-open");
+              b.setAttribute("aria-expanded", "false");
+            });
+          };
+
+          const openCol = (col) => {
+            const btn = table.querySelector('[data-filter-toggle="' + col + '"]');
+            const pop = table.querySelector('[data-filter-pop="' + col + '"]');
+            const input = table.querySelector('[data-filter-input="' + col + '"]');
+            if (!btn || !pop) return;
+            table.querySelectorAll("[data-filter-pop]").forEach((p) => {
+              if (p !== pop) p.hidden = true;
+            });
+            table.querySelectorAll("[data-filter-toggle]").forEach((b) => {
+              if (b !== btn) {
+                b.classList.remove("is-open");
+                b.setAttribute("aria-expanded", "false");
+              }
+            });
+            pop.hidden = false;
+            btn.classList.add("is-open");
+            btn.setAttribute("aria-expanded", "true");
+            if (input) window.requestAnimationFrame(() => input.focus());
+          };
+
+          table.querySelectorAll("[data-filter-toggle]").forEach((btn) => {
+            const col = btn.dataset.filterToggle;
+            const pop = table.querySelector('[data-filter-pop="' + col + '"]');
+            const input = table.querySelector('[data-filter-input="' + col + '"]');
+            const clearBtn = table.querySelector('[data-filter-clear="' + col + '"]');
+            if (!pop || !input) return;
+
+            btn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              if (pop.hidden) openCol(col);
+              else closeAll();
+            });
+            pop.addEventListener("click", (e) => e.stopPropagation());
+
+            input.addEventListener("input", () => {
+              const v = input.value.trim();
+              filterState[col] = v;
+              if (v) {
+                btn.classList.add("is-active");
+                if (clearBtn) clearBtn.hidden = false;
+              } else {
+                btn.classList.remove("is-active");
+                if (clearBtn) clearBtn.hidden = true;
+              }
+              apply();
+            });
+            input.addEventListener("keydown", (e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                closeAll();
+                btn.focus();
+              }
+            });
+
+            if (clearBtn) {
+              clearBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                input.value = "";
+                filterState[col] = "";
+                btn.classList.remove("is-active");
+                clearBtn.hidden = true;
+                apply();
+                input.focus();
+              });
+            }
+          });
+
+          /* Outside-click closes popups. */
+          document.addEventListener("click", (e) => {
+            if (!table.contains(e.target)) { closeAll(); return; }
+            if (!e.target.closest("[data-filter-pop]") &&
+                !e.target.closest("[data-filter-toggle]")) {
+              closeAll();
+            }
+          });
+
+          /* Hint button: preset "engineering" filter and open popup. */
+          const hintBtn = table.querySelector("[data-filter-hint]");
+          if (hintBtn) {
+            hintBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const col = "name";
+              const btn = table.querySelector('[data-filter-toggle="' + col + '"]');
+              const input = table.querySelector('[data-filter-input="' + col + '"]');
+              const clearBtn = table.querySelector('[data-filter-clear="' + col + '"]');
+              if (!btn || !input) return;
+              input.value = "engineering";
+              filterState[col] = "engineering";
+              btn.classList.add("is-active");
+              if (clearBtn) clearBtn.hidden = false;
+              apply();
+              openCol(col);
+            });
+          }
+        });
+
+        /* Live ticking metric values for the observability dashboard.
+           Each element has data-tick-base (baseline) and data-tick-vary
+           (random deviation amplitude). Honors prefers-reduced-motion: no
+           ticks if user has reduced-motion on. */
+        const reducedMotion = window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!reducedMotion) {
+          const tickEls = document.querySelectorAll("[data-tick]");
+          if (tickEls.length) {
+            const fmt = (el, n) => {
+              const dec = parseInt(el.dataset.tickDecimal || "0", 10);
+              const suf = el.dataset.tickSuffix || "";
+              const isInt = el.dataset.tickInt === "1";
+              if (isInt) {
+                const hh = Math.max(0, Math.min(23, Math.floor(n)));
+                return String(hh).padStart(2, "0") + suf;
+              }
+              if (dec > 0) return n.toFixed(dec) + suf;
+              return Math.round(n) + suf;
+            };
+            const tickOnce = () => {
+              tickEls.forEach((el) => {
+                const base = parseFloat(el.dataset.tickBase || "0");
+                const vary = parseFloat(el.dataset.tickVary || "0");
+                const n = base + (Math.random() - 0.5) * 2 * vary;
+                el.classList.add("is-ticking");
+                el.textContent = fmt(el, n);
+                window.setTimeout(() => el.classList.remove("is-ticking"), 220);
+              });
+            };
+            window.setInterval(tickOnce, 5000);
+          }
+        }
+
+        /* Scroll-pin reveal: drive --copy-progress on each .feature-shot-live
+           article based on scroll position. Copy starts emerging while the
+           article is still entering (before pin activates) and reaches its
+           final position at ~60% of the pin range — leaving the rest of the
+           pin for the user to read the copy in place. */
+        const liveArticles = document.querySelectorAll(".feature-shot-live");
+        if (liveArticles.length && !reducedMotion) {
+          const updatePinProgress = () => {
+            liveArticles.forEach((article) => {
+              const rect = article.getBoundingClientRect();
+              const vh = window.innerHeight;
+              const articleH = article.offsetHeight;
+              const pinScroll = articleH - vh;
+              if (pinScroll <= 0) {
+                article.style.setProperty("--copy-progress", "1");
+                return;
+              }
+              /* Progress starts when article top is 45% of viewport below
+                 viewport top (copy begins emerging while article is still
+                 well-entering); finishes at 45% of pin scroll (leaves 55%
+                 of pin as settled read-time). Earlier + faster preset. */
+              const startY = vh * 0.45;
+              const endY = -pinScroll * 0.45;
+              let p = (startY - rect.top) / (startY - endY);
+              if (p < 0) p = 0;
+              else if (p > 1) p = 1;
+              article.style.setProperty("--copy-progress", p.toFixed(3));
+            });
+          };
+          let pinScheduled = false;
+          const schedulePinUpdate = () => {
+            if (pinScheduled) return;
+            pinScheduled = true;
+            window.requestAnimationFrame(() => {
+              pinScheduled = false;
+              updatePinProgress();
+            });
+          };
+          window.addEventListener("scroll", schedulePinUpdate, { passive: true });
+          window.addEventListener("resize", schedulePinUpdate, { passive: true });
+          updatePinProgress();
+        }
+      })();
+    </script>
+  <!-- impeccable-live-start -->
+<script src="http://localhost:8400/live.js"></script>
+<!-- impeccable-live-end -->
+</body>
+</html>

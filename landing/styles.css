@@ -1,0 +1,2219 @@
+/* dbil — landing page styles
+   Field manual: dark by deliberate brand choice (PRODUCT.md). Coal body carries
+   the workshop sections; brand carries identity bands (hero, safety, verify);
+   ink-stack reserved for the rare paper exception (skip-link, button labels).
+   Bricolage Grotesque + JetBrains Mono, flat by default, responsive motion only. */
+
+:root {
+  /* ---------- Color tokens (OKLCH, brand hue 35) ---------- */
+  /* Brand is committed but sober: a deep wine/burgundy rather than burnt
+     orange. The hue (28) sits in the red-wine band, chroma (0.12) keeps
+     it from "alarm red," and L (0.45) reads as "old leather, dried
+     blood" — field-manual color, not marketing accent. */
+  --brand:        oklch(0.45 0.12 28);
+  --brand-deep:   oklch(0.33 0.10 28);
+  /* brand-bright is the soft warm-clay accent. Hue 38 sits within 10° of the
+     brand (28), so the two read as one voice (not as a 22° gap that would
+     break the One Voice Rule). Higher L makes it pop on dark surfaces
+     without raising chroma. */
+  --brand-bright: oklch(0.72 0.13 38);
+
+  /* Dark surface stack — page body. Each step deepens chroma along brand hue
+     so the workshop reads as the brand's own dim envelope, not as generic dark UI. */
+  --coal:         oklch(0.158 0.014 35);
+  --coal-2:       oklch(0.205 0.016 35);
+  --coal-3:       oklch(0.250 0.018 35);
+  --coal-rule:    oklch(0.330 0.020 35);
+  --coal-rule-soft: oklch(0.260 0.018 35);
+  --void:         oklch(0.110 0.012 35);
+
+  /* Text on coal — body, mute (large secondary), soft (caption / metadata).
+     All three computed for >=4.5:1 on --coal at body sizes. */
+  --on-coal:         oklch(0.945 0.012 35);
+  --on-coal-mute:    oklch(0.795 0.016 35);
+  --on-coal-soft:    oklch(0.660 0.020 35);
+
+  /* Paper / ink stack — used only inside paper exceptions (skip-link, button
+     labels on dark buttons, the install codeblock's optional paper inset). */
+  --paper:        oklch(0.972 0.006 35);
+  --ink:          oklch(0.175 0.024 35);
+
+  /* Text on brand — body, mute, soft. on-brand-mute clears 4.5:1 against brand
+     at L 0.50; on-brand-soft is reserved for >=18px contexts only. */
+  --on-brand:        oklch(0.972 0.006 35);
+  --on-brand-mute:   oklch(0.905 0.016 35);
+  --on-brand-soft:   oklch(0.840 0.022 35);
+
+  /* Code highlight on dark surfaces (coal / coal-2 / brand) — every token >= 4.5:1 on --coal */
+  --c-kw-d:  oklch(0.80 0.16 38);
+  --c-ty-d:  oklch(0.82 0.10 195);
+  --c-fn-d:  oklch(0.82 0.11 220);
+  --c-str-d: oklch(0.82 0.13 100);
+  --c-num-d: oklch(0.80 0.18 50);
+  --c-com-d: oklch(0.65 0.014 35);
+
+  /* ---------- Type ---------- */
+  --font-display:
+    "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale */
+  --t-display-xl: clamp(2.125rem, 6.6vw, 4.75rem);
+  --t-display-l:  clamp(1.875rem, 4.6vw, 3.375rem);
+  --t-display-m:  clamp(1.625rem, 3.4vw, 2.375rem);
+  --t-display-s:  clamp(1.25rem, 2vw, 1.5625rem);
+  --t-lede:       clamp(1.0625rem, 1.2vw, 1.1875rem);
+  --t-body:       1.0625rem;
+  --t-mono:       0.875rem;
+  --t-meta:       0.8125rem;
+
+  /* Spacing */
+  --wrap:    1240px;
+  --pad-x:   clamp(1.25rem, 4vw, 2.5rem);
+  --gutter:  clamp(1.5rem, 3vw, 2.5rem);
+  --section-y: clamp(4rem, 8vw, 7.5rem);
+
+  /* Motion */
+  --ease-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --t-fast: 140ms;
+  --t-med:  260ms;
+  --t-slow: 440ms;
+
+  /* Z */
+  --z-skip: 100;
+  --z-toast: 90;
+  --z-masthead: 50;
+
+  color-scheme: dark;
+}
+
+/* ---------- Reset ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+body {
+  margin: 0;
+  background: var(--coal);
+  color: var(--on-coal);
+  font-family: var(--font-display);
+  font-size: var(--t-body);
+  line-height: 1.55;
+  font-feature-settings: "ss01", "ss02", "kern", "liga", "calt";
+  font-variation-settings: "wdth" 92;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+img, svg, video { display: block; max-width: 100%; height: auto; }
+img { font-style: italic; /* alt is more visible if image fails */ }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+ul, ol { margin: 0; padding: 0; list-style: none; }
+h1, h2, h3, h4, h5, h6, p { margin: 0; }
+code, kbd, pre, samp { font-family: var(--font-mono); }
+
+/* Focus ring — always visible, context-tuned for AA-readable contrast on every band */
+:focus-visible {
+  outline: 2px solid var(--on-coal);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+a:focus-visible { outline-offset: 4px; }
+main:focus-visible { outline: none; }
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  top: 0; left: 0;
+  z-index: var(--z-skip);
+  padding: 0.5rem 0.875rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  transform: translateY(-150%);
+  transition: transform var(--t-fast) var(--ease-quart);
+}
+.skip-link:focus-visible { transform: translateY(0); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+
+/* ---------- Layout primitives ---------- */
+.wrap {
+  width: 100%;
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding-inline: var(--pad-x);
+}
+
+/* ---------- Typography ---------- */
+.display-xl, .display-l, .display-m, .display-s {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variation-settings: "wdth" 88;
+  letter-spacing: -0.025em;
+  line-height: 1.0;
+  text-wrap: balance;
+  color: var(--on-coal);
+}
+.display-xl { font-size: var(--t-display-xl); line-height: 0.95; letter-spacing: -0.028em; }
+.display-l  { font-size: var(--t-display-l);  line-height: 1.0; }
+.display-m  { font-size: var(--t-display-m);  line-height: 1.08; letter-spacing: -0.02em; }
+.display-s  { font-size: var(--t-display-s);  line-height: 1.18; letter-spacing: -0.015em; font-weight: 600; }
+
+.display-mono {
+  font-family: var(--font-mono);
+  font-variation-settings: normal;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  font-size: 0.78em;
+  padding: 0.04em 0.18em;
+  border-radius: 2px;
+  max-width: 100%;
+}
+@media (max-width: 560px) {
+  .display-mono {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-size: 0.72em;
+  }
+}
+
+.lede {
+  font-size: var(--t-lede);
+  line-height: 1.55;
+  color: var(--on-coal-mute);
+  max-width: 62ch;
+  text-wrap: pretty;
+  font-variation-settings: "wdth" 96;
+}
+.lede strong { color: var(--on-coal); font-weight: 600; }
+
+p { text-wrap: pretty; max-width: 64ch; }
+
+.mono { font-family: var(--font-mono); font-feature-settings: "ss01", "ss02", "calt", "zero"; }
+.num  { font-variant-numeric: tabular-nums; }
+
+.inline-code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--coal-2);
+  border: 1px solid var(--coal-rule);
+  padding: 0.04em 0.32em;
+  border-radius: 2px;
+  white-space: nowrap;
+  color: var(--on-coal);
+}
+
+.caption {
+  font-size: var(--t-meta);
+  color: var(--on-coal-mute);
+  margin-top: 1.5rem;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.875rem;
+  padding: 0 1.25rem;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variation-settings: "wdth" 92;
+  letter-spacing: -0.005em;
+  transition:
+    transform var(--t-fast) var(--ease-quart),
+    background-color var(--t-fast) var(--ease-quart),
+    color var(--t-fast) var(--ease-quart),
+    border-color var(--t-fast) var(--ease-quart),
+    box-shadow var(--t-fast) var(--ease-quart);
+}
+.btn svg { transition: transform var(--t-fast) var(--ease-quart); }
+
+.btn-primary {
+  background: var(--brand);
+  color: var(--on-brand);
+  border: 1px solid var(--brand);
+}
+.btn-primary:hover {
+  background: var(--brand-deep);
+  border-color: var(--brand-deep);
+  transform: translateY(-1px);
+}
+.btn-primary:hover svg { transform: translateX(2px); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--on-coal);
+  border: 1px solid var(--on-coal-mute);
+}
+.btn-ghost:hover {
+  background: var(--on-coal);
+  color: var(--coal);
+  border-color: var(--on-coal);
+  transform: translateY(-1px);
+}
+
+/* Brand-band button variants (hero, safety, verify) — on-brand ink, paper card. */
+.hero .btn-primary,
+.safety .btn-primary,
+.verify .btn-primary {
+  background: var(--on-brand);
+  color: var(--brand-deep);
+  border-color: var(--on-brand);
+}
+.hero .btn-primary:hover,
+.safety .btn-primary:hover,
+.verify .btn-primary:hover {
+  background: var(--paper);
+  color: var(--brand-deep);
+  border-color: var(--paper);
+}
+.hero .btn-ghost,
+.safety .btn-ghost,
+.verify .btn-ghost {
+  color: var(--on-brand);
+  border-color: var(--on-brand);
+}
+.hero .btn-ghost:hover,
+.safety .btn-ghost:hover,
+.verify .btn-ghost:hover {
+  background: var(--on-brand);
+  color: var(--brand-deep);
+}
+
+/* Focus ring on brand bands */
+.hero :focus-visible,
+.safety :focus-visible,
+.verify :focus-visible {
+  outline-color: var(--on-brand);
+}
+
+/* ---------- Masthead ---------- */
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-masthead);
+  background: var(--void);
+  border-bottom: 1px solid var(--coal-rule);
+  transition: border-bottom-color var(--t-med) var(--ease-quart);
+}
+/* Scroll-state: once the user has left the hero, the masthead's bottom rule
+   commits to brand. Instrument registering scroll, not shadow joining. */
+.masthead.is-scrolled {
+  border-bottom-color: var(--brand);
+}
+.masthead-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.75rem;
+}
+.mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  color: var(--on-coal);
+  text-decoration: none;
+}
+.mark-name {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variation-settings: "wdth" 88;
+}
+.mark-sub {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--on-coal-mute);
+  letter-spacing: 0.02em;
+  padding-left: 0.625rem;
+  border-left: 1px solid var(--coal-rule);
+  margin-left: 0.125rem;
+}
+.primary-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 1.75rem);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--on-coal-mute);
+}
+.primary-nav a {
+  position: relative;
+  padding: 0.25rem 0;
+  transition: color var(--t-fast) var(--ease-quart);
+}
+.primary-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform var(--t-med) var(--ease-quart);
+}
+.primary-nav a:hover { color: var(--on-coal); }
+.primary-nav a:hover::after { transform: scaleX(1); transform-origin: left center; }
+
+/* Language switcher — minimal mono toggle at the end of primary nav.
+   Active language is brand-bright; inactive is muted with a hover lift. */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: clamp(0.625rem, 1.5vw, 1rem);
+  padding-left: clamp(0.625rem, 1.5vw, 1rem);
+  border-left: 1px solid var(--coal-rule);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lang-switch a {
+  color: var(--on-coal-soft);
+  padding: 0.25rem 0;
+  transition: color var(--t-fast) var(--ease-quart);
+}
+.lang-switch a:hover { color: var(--on-coal); }
+.lang-switch a::after { content: none; }
+.lang-switch a.is-active {
+  color: var(--brand-bright);
+  font-weight: 600;
+}
+@media (max-width: 430px) {
+  .lang-switch {
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+    font-size: 0.625rem;
+    gap: 0.375rem;
+  }
+}
+
+@media (max-width: 540px) {
+  .mark-sub { display: none; }
+  .primary-nav { gap: 0.875rem; font-size: 0.8125rem; }
+}
+@media (max-width: 430px) {
+  .primary-nav { gap: 0.625rem; font-size: 0.75rem; }
+  .mark-name { font-size: 1rem; }
+}
+@media (max-width: 380px) {
+  .primary-nav { gap: 0.5rem; font-size: 0.6875rem; }
+}
+
+/* ---------- Hero ----------
+   Layered scene: the data-table demo fills the hero behind everything, an
+   overlay gradient tints the left half toward brand so the copy reads, the
+   wrap+copy sit on top in z=2. The brand identity opener is preserved by the
+   left-side overlay being near-opaque brand. */
+.hero {
+  position: relative;
+  background: var(--brand);
+  color: var(--on-brand);
+  padding: clamp(4rem, 8vw, 7rem) 0 clamp(3rem, 6vw, 5.5rem);
+  overflow: hidden;
+  min-height: clamp(34rem, 56vw, 44rem);
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    var(--brand) 0%,
+    var(--brand) 36%,
+    color-mix(in oklab, var(--brand) 78%, transparent) 52%,
+    color-mix(in oklab, var(--brand) 32%, transparent) 66%,
+    transparent 82%
+  );
+}
+
+.hero-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: center;
+}
+.hero-copy { min-width: 0; }
+
+.hero-copy h1 {
+  color: var(--on-brand);
+}
+/* Vertical typographic stack — field-manual cover composition. Each line
+   commits to its own row with deliberate weight/width contrast; the mono
+   middle line is the visual anchor (the literal artifact dbil drops into). */
+.hero-stack {
+  display: grid;
+  grid-template-columns: minmax(0, max-content);
+  gap: 0.06em;
+  min-width: 0;
+}
+.hero-stack-l1,
+.hero-stack-l2,
+.hero-stack-l3 {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 0.95;
+}
+.hero-stack-l1 {
+  font-weight: 500;
+  font-variation-settings: "wdth" 96;
+  font-size: 0.78em;
+  color: var(--on-brand-mute);
+}
+.hero-stack-l3 {
+  font-weight: 600;
+  font-variation-settings: "wdth" 84;
+  font-size: 0.96em;
+  letter-spacing: -0.032em;
+}
+.hero-copy h1 .display-mono {
+  background: oklch(0.28 0.10 28 / 0.55);
+  color: var(--on-brand);
+  border: 1px solid oklch(0.18 0.08 28 / 0.6);
+  justify-self: start;
+  font-size: 0.84em;
+}
+
+.hero-copy .lede {
+  color: var(--on-brand-mute);
+  margin-top: 1.5rem;
+  max-width: 52ch;
+}
+.hero-copy .lede code.inline-code {
+  background: oklch(0.28 0.10 28 / 0.55);
+  border-color: oklch(0.18 0.08 28 / 0.6);
+  color: var(--on-brand);
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+.hero-copy .caption {
+  color: var(--on-brand-mute);
+  margin-top: 1.75rem;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+/* ---------- Hero table demo ----------
+   The data view from the in-app workspace, re-voiced in landing tokens and
+   filled with synthetic orders data. Pure CSS: row hover-highlights, no JS.
+   aria-hidden on the markup — the hero h1+lede+CTAs carry the actual message;
+   the table is showroom imagery, not announceable content. */
+.hero-table {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--coal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font-mono);
+}
+.hero-table-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 0.625rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--void);
+  border-bottom: 1px solid var(--coal-rule);
+  font-size: 0.75rem;
+  color: var(--on-coal-mute);
+  letter-spacing: 0.02em;
+  font-variation-settings: normal;
+}
+.hero-table-h-k { color: var(--on-coal); font-weight: 600; }
+.hero-table-h-sep { color: var(--on-coal-soft); }
+.hero-table-h-port { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.hero-table-grid {
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-table-row {
+  display: grid;
+  grid-template-columns:
+    48px
+    minmax(80px, 110px)
+    minmax(180px, 1.4fr)
+    minmax(90px, 110px)
+    minmax(80px, 100px)
+    minmax(140px, 1fr);
+  align-items: stretch;
+  border-bottom: 1px solid var(--coal-rule-soft);
+  min-height: 32px;
+  transition: background-color var(--t-fast) var(--ease-quart);
+}
+.hero-table-row-head {
+  background: var(--void);
+  border-bottom: 1px solid var(--coal-rule);
+  min-height: 44px;
+}
+.hero-table-row:not(.hero-table-row-head):hover {
+  background-color: var(--coal-2);
+}
+
+.hero-table-th {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 12px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-coal-mute);
+}
+.hero-table-th-num {
+  text-transform: none;
+  font-size: 10px;
+  color: var(--on-coal-soft);
+  align-items: flex-end;
+  padding-right: 8px;
+}
+.hero-table-th-r {
+  align-items: flex-end;
+}
+.hero-table-type {
+  font-size: 9.5px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--brand-bright);
+  letter-spacing: 0;
+  text-transform: lowercase;
+}
+
+.hero-table-cell {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--on-coal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.hero-table-cell-num {
+  justify-content: flex-end;
+  padding-right: 8px;
+  color: var(--on-coal-soft);
+  font-size: 11px;
+}
+.hero-table-num {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+.hero-table-null {
+  font-style: italic;
+  color: var(--on-coal-soft);
+}
+.hero-table-ts {
+  color: var(--on-coal-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-table-status {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.hero-table-status-paid    { color: var(--on-coal-mute); }
+.hero-table-status-pending { color: var(--on-coal-soft); }
+.hero-table-status-refunded {
+  color: var(--brand-bright);
+}
+.hero-table-status-failed {
+  color: var(--brand-bright);
+  font-weight: 700;
+}
+
+.hero-table-footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--void);
+  border-top: 1px solid var(--coal-rule);
+  font-size: 0.7rem;
+  color: var(--on-coal-mute);
+  letter-spacing: 0.02em;
+  font-variation-settings: normal;
+}
+.hero-table-footer-hint {
+  color: var(--on-coal-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Below tablet: hide the table, flatten the overlay to plain brand bg.
+   Hero falls back to copy-only layout (h1, lede, CTAs, caption). */
+@media (max-width: 880px) {
+  .hero {
+    min-height: 0;
+    padding-top: clamp(3rem, 7vw, 4.5rem);
+  }
+  .hero-table:not(.feature-table) { display: none; }
+  .hero-overlay { background: var(--brand); }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
+}
+
+/* ---------- Feature-shot-live: scroll-pinned full-viewport-bleed demo ----------
+   Article is 150vh tall; inside, a sticky pin holds the simulator at the
+   top of the viewport while the user scrolls through the remaining 50vh.
+   The copy starts translateY(100%) (below viewport) and slides up driven
+   by --copy-progress (0→1), set by JS scroll listener. Overlay opacity
+   tracks the same progress, so the copy fades onto a readable surface
+   exactly as it arrives. Reduced-motion shows end state immediately. */
+.feature-shot-live {
+  position: relative;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  margin-block: clamp(3rem, 5vw, 5rem);
+  height: 150vh;
+  min-height: 150vh;
+  overflow: visible;
+  border-top: 1px solid var(--coal-rule);
+  border-bottom: 1px solid var(--coal-rule);
+  display: block;
+  gap: 0;
+}
+
+/* The pin: sticky to viewport top while article is being scrolled through.
+   Holds the simulator, overlay, and copy as absolutely-stacked layers. */
+.feature-shot-live-pin {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: block;
+}
+
+/* The live table/dashboard inside the pin: full-fill the pinned viewport.
+   No border, no radius — chrome (header/footer strips) provides differentiation. */
+.feature-shot-live-pin > .feature-table,
+.feature-shot-live-pin > .feature-dashboard {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  background: var(--coal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Overlay: same brand-tint gradient as the hero (oxblood opaque on copy
+   side fading to transparent on simulator side). Opacity is driven by
+   scroll progress, so the overlay only fires when copy is arriving. */
+.feature-shot-live-pin > .feature-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: var(--copy-progress, 0);
+  background: linear-gradient(
+    to left,
+    var(--brand) 0%,
+    var(--brand) 36%,
+    color-mix(in oklab, var(--brand) 78%, transparent) 52%,
+    color-mix(in oklab, var(--brand) 32%, transparent) 66%,
+    transparent 82%
+  );
+}
+/* Copy: starts 100% below the pin, slides up to 0 as --copy-progress
+   advances. Aligned to the wrap so copy stays in the page's content column. */
+.feature-shot-live-pin > .feature-copy-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding: clamp(2.5rem, 5vw, 4rem) var(--pad-x);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transform: translateY(calc((1 - var(--copy-progress, 0)) * 100%));
+  pointer-events: none;
+}
+.feature-shot-live .feature-copy {
+  max-width: 38ch;
+  pointer-events: auto;
+}
+/* Copy sits on the brand-tinted overlay → use the on-brand text stack so
+   contrast works on both fully-opaque brand (end of reveal) and the partial
+   coal showing through during the scroll-pin progression. */
+.feature-shot-live .feature-copy h3 { color: var(--on-brand); }
+.feature-shot-live .feature-copy p { color: var(--on-brand-mute); }
+.feature-shot-live .feature-copy p strong { color: var(--on-brand); }
+.feature-shot-live .feature-copy .inline-code {
+  background: oklch(0.28 0.10 28 / 0.55);
+  border-color: oklch(0.18 0.08 28 / 0.6);
+  color: var(--on-brand);
+}
+
+
+/* ---------- Feature dashboard (live observability variant) ----------
+   Same vocabulary as .feature-table, but the body is metric tiles + slow
+   queries list, not rows. Lives inside .feature-shot-live as the
+   absolute-positioned visual. */
+.feature-dashboard {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--coal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font-mono);
+}
+/* Metric tiles row */
+.feature-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--coal-rule);
+  flex: 0 0 auto;
+}
+.feature-tile {
+  padding: 1rem 1.125rem 1.125rem;
+  border-right: 1px solid var(--coal-rule-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+.feature-tile:last-child { border-right: 0; }
+.feature-tile-label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-coal-mute);
+}
+.feature-tile-value {
+  font-size: clamp(1.5rem, 2.4vw, 2.125rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--on-coal);
+  line-height: 1;
+  font-variation-settings: normal;
+  transition: color 240ms var(--ease-quart);
+}
+.feature-tile-value.is-ticking {
+  color: var(--brand-bright);
+}
+.feature-tile-trend {
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+  color: var(--on-coal-soft);
+}
+
+/* Slow queries block */
+.feature-dashboard-section {
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.feature-dashboard-sec-h {
+  display: flex;
+  align-items: center;
+  gap: 0 0.625rem;
+  padding: 0.625rem 1.125rem;
+  background: var(--void);
+  border-bottom: 1px solid var(--coal-rule);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--on-coal-mute);
+}
+.feature-dash-sec-k {
+  color: var(--on-coal);
+  font-weight: 600;
+}
+.feature-slow-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--coal-rule) transparent;
+  min-height: 0;
+}
+.feature-slow-row {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 12px;
+  padding: 8px 1.125rem;
+  border-bottom: 1px solid var(--coal-rule-soft);
+  transition: background-color var(--t-fast) var(--ease-quart);
+}
+.feature-slow-row:hover { background: var(--coal-2); }
+.feature-slow-time {
+  color: var(--brand-bright);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: color 240ms var(--ease-quart);
+}
+.feature-slow-time.is-ticking { color: var(--on-coal); }
+.feature-slow-q {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--on-coal-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.feature-slow-q .c-kw { color: var(--c-kw-d); font-weight: 600; }
+.feature-slow-q .c-str { color: var(--c-str-d); }
+.feature-slow-kill {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-coal-soft);
+  border: 1px solid var(--coal-rule);
+  background: transparent;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: default;
+  transition:
+    color var(--t-fast) var(--ease-quart),
+    border-color var(--t-fast) var(--ease-quart);
+}
+.feature-slow-row:hover .feature-slow-kill {
+  color: var(--brand-bright);
+  border-color: var(--brand-bright);
+}
+
+/* Mobile (≤880px): drop the scroll-pin choreography entirely. The pin
+   wrapper becomes display:contents so its children flow into the article's
+   normal flex column; simulator becomes a bounded plate; copy sits above. */
+@media (max-width: 880px) {
+  .feature-shot-live {
+    width: 100%;
+    margin-inline: 0;
+    height: auto;
+    min-height: 0;
+    border-top: 0;
+    border-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-block: clamp(2rem, 6vw, 3rem);
+  }
+  .feature-shot-live-pin {
+    position: static;
+    height: auto;
+    overflow: visible;
+    display: contents;
+  }
+  .feature-shot-live-pin > .feature-table,
+  .feature-shot-live-pin > .feature-dashboard {
+    position: static;
+    height: clamp(360px, 70vw, 460px);
+    border: 1px solid var(--coal-rule);
+    border-radius: 4px;
+    order: 2;
+  }
+  .feature-shot-live-pin > .feature-overlay { display: none; }
+  .feature-shot-live-pin > .feature-copy-wrap {
+    position: static;
+    padding: 0;
+    display: block;
+    pointer-events: auto;
+    order: 1;
+    transform: none;
+    min-height: 0;
+  }
+  .feature-shot-live .feature-copy { max-width: 100%; }
+  .feature-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feature-tile { border-bottom: 1px solid var(--coal-rule-soft); }
+  .feature-tile:nth-child(odd) { border-right: 1px solid var(--coal-rule-soft); }
+  .feature-tile:nth-child(even) { border-right: 0; }
+  .feature-tile:nth-last-child(-n+2) { border-bottom: 0; }
+  .feature-slow-q { font-size: 10.5px; }
+}
+
+/* Bounded-plate variant (kept for any non-bleed feature-tables if added later). */
+.feature-table {
+  position: relative;
+  background: var(--coal);
+  border: 1px solid var(--coal-rule);
+  border-radius: 4px;
+  min-width: 0;
+  max-width: 100%;
+  height: clamp(380px, 38vw, 460px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Feature table grid drops the base "overflow: hidden" so popup can extend
+   downward; scrolling moves to the inner [data-filter-rows] wrapper only.
+   Header row stays naturally on top, popup floats above body rows. */
+.feature-table-grid {
+  overflow: visible;
+  min-height: 0;
+}
+.feature-table-grid > [data-filter-rows] {
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-height: 0;
+}
+/* data-filter-rows must be a flex item for proper sizing */
+.feature-table .hero-table-grid {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Column filter button (appears in header for filterable columns) */
+.hero-table-th-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero-table-th.has-filter {
+  position: relative;
+}
+.hero-table-th.has-filter > .hero-table-th-row {
+  cursor: default;
+}
+.hero-table-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--on-coal-soft);
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-quart),
+    background-color var(--t-fast) var(--ease-quart),
+    border-color var(--t-fast) var(--ease-quart);
+}
+.hero-table-filter-btn:hover {
+  color: var(--on-coal);
+  background: var(--coal-2);
+}
+.hero-table-filter-btn.is-open {
+  color: var(--brand-bright);
+  background: var(--coal-2);
+  border-color: var(--coal-rule);
+}
+.hero-table-filter-btn.is-active {
+  color: var(--brand-bright);
+  background: color-mix(in oklab, var(--brand) 28%, transparent);
+  border-color: color-mix(in oklab, var(--brand-bright) 55%, transparent);
+}
+
+/* Filter popup — appears just below the filter button, anchored to the th.
+   Functional shadow as state (popup opening) per Flat-Page Rule. */
+.hero-table-filter-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 8px;
+  z-index: 5;
+  width: 240px;
+  max-width: calc(100vw - 2rem);
+  padding: 0.625rem 0.75rem 0.75rem;
+  background: var(--coal-2);
+  border: 1px solid var(--coal-rule);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px -8px oklch(0 0 0 / 0.55);
+  font-family: var(--font-mono);
+}
+.hero-table-filter-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.hero-table-filter-input {
+  flex: 1 1 auto;
+  height: 30px;
+  padding: 0 26px 0 8px;
+  background: var(--coal);
+  border: 1px solid var(--coal-rule);
+  border-radius: 3px;
+  color: var(--on-coal);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  outline: none;
+  transition: border-color var(--t-fast) var(--ease-quart);
+}
+.hero-table-filter-input::placeholder { color: var(--on-coal-soft); }
+.hero-table-filter-input:focus { border-color: var(--brand-bright); }
+.hero-table-filter-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-coal-soft);
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-quart);
+}
+.hero-table-filter-clear:hover { color: var(--on-coal); }
+.hero-table-filter-hint {
+  margin-top: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--on-coal-soft);
+  letter-spacing: 0.02em;
+}
+
+/* The filter hint in the footer is a clickable shortcut: click → applies
+   "engineering" filter and opens the popup. Treats the hint as inviting
+   the user to engage rather than just labeling a keystroke. */
+button.hero-table-footer-hint {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--on-coal-soft);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-quart);
+}
+button.hero-table-footer-hint:hover { color: var(--brand-bright); }
+
+/* Row hidden by filter — preserve layout (no animation, instant hide). */
+.hero-table-row[data-filtered-out] { display: none; }
+
+@media (max-width: 880px) {
+  .feature-table { height: clamp(320px, 60vw, 400px); }
+}
+@media (max-width: 480px) {
+  .hero-table-h-port { margin-left: 0; width: 100%; }
+}
+
+/* ---------- What ---------- */
+.what {
+  padding: var(--section-y) 0;
+}
+.what-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: start;
+}
+.what-lede h2 { margin-bottom: 1.25rem; max-width: 18ch; }
+.what-lede p { font-size: var(--t-lede); color: var(--on-coal-mute); max-width: 60ch; line-height: 1.55; }
+.what-lede p strong { color: var(--on-coal); }
+
+.what-facts {
+  border-top: 1px solid var(--coal-rule);
+  font-size: var(--t-meta);
+}
+.what-facts li {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  gap: 1rem;
+  padding: 0.875rem 0.75rem;
+  margin-inline: -0.75rem;
+  border-bottom: 1px solid var(--coal-rule-soft);
+  color: var(--on-coal);
+  border-radius: 2px;
+  transition: background-color var(--t-fast) var(--ease-quart);
+}
+.what-facts li:last-child { border-bottom: 0; }
+.what-facts li:hover {
+  background-color: var(--coal-2);
+}
+/* fact-k in static state carries brand so the .what section visibly commits
+   ~30-40% of its right column to oxblood, per Committed-Hue Rule. */
+.what-facts .fact-k {
+  color: var(--brand-bright);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+  align-self: center;
+}
+.what-facts .fact-v { color: var(--on-coal); }
+
+@media (max-width: 720px) {
+  .what-grid { grid-template-columns: 1fr; gap: 2rem; }
+}
+
+/* ---------- Features ---------- */
+.features { padding: clamp(3rem, 6vw, 5rem) 0 var(--section-y); }
+.features .wrap > .feature + .feature {
+  margin-top: clamp(3.5rem, 7vw, 6rem);
+}
+
+.feature { display: grid; gap: clamp(1.75rem, 3vw, 3rem); align-items: center; }
+.feature-copy h3 { margin-bottom: 1rem; max-width: 18ch; }
+.feature-copy p { color: var(--on-coal-mute); line-height: 1.55; max-width: 58ch; }
+.feature-copy p strong { color: var(--on-coal); }
+
+.feature figure { margin: 0; }
+.feature figure figcaption {
+  margin-top: 0.75rem;
+  font-size: var(--t-meta);
+  color: var(--on-coal-mute);
+}
+
+/* Snippet — used inside features (coal context). The page is dark by default,
+   so the only code-surface treatment needed is one: coal-2 inset on coal body. */
+.snippet {
+  margin: 0;
+  padding: 1.125rem 1.25rem;
+  background: var(--coal-2);
+  border: 1px solid var(--coal-rule);
+  border-radius: 4px;
+  font-size: var(--t-mono);
+  line-height: 1.65;
+  color: var(--on-coal);
+  overflow-x: auto;
+  white-space: pre;
+  font-variation-settings: normal;
+}
+.snippet .c-kw  { color: var(--c-kw-d); font-weight: 600; }
+.snippet .c-ty  { color: var(--c-ty-d); }
+.snippet .c-fn  { color: var(--c-fn-d); }
+.snippet .c-str { color: var(--c-str-d); }
+.snippet .c-num { color: var(--c-num-d); }
+.snippet .c-com { color: var(--c-com-d); font-style: italic; }
+.snippet .c-id  { color: var(--on-coal); }
+
+/* ---------- Scope: "What dbil doesn't ship" ----------
+   Field-manual register: a list of deliberate cuts, each named with a × glyph
+   and a one-sentence "why not." Lives between features and safety as a
+   tighter rule-line moment, not as a full section-y band (the 4-item list
+   doesn't need that much vertical air). */
+.scope { padding: clamp(2.5rem, 4vw, 4rem) 0; }
+.scope-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: start;
+}
+.scope-head h2 { color: var(--on-coal); max-width: 14ch; margin-bottom: 1.25rem; }
+.scope-lede {
+  font-size: var(--t-lede);
+  color: var(--on-coal-mute);
+  line-height: 1.55;
+  max-width: 38ch;
+}
+/* scope-list reads as a manifesto / list of statements, not a data table.
+   Drop the row-by-row separators (those belong to .what-facts); use airier
+   gap, leading column with the brand-bright × glyph, and remove the bordered
+   table feel. The list as a whole is the artifact, not each row. */
+.scope-list {
+  font-size: 0.9375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.scope-list li {
+  display: grid;
+  grid-template-columns: 1.5rem max-content 1fr;
+  gap: 0 0.875rem;
+  align-items: baseline;
+}
+.scope-x {
+  color: var(--brand-bright);
+  font-size: 1.15rem;
+  line-height: 1;
+  align-self: center;
+  font-variation-settings: normal;
+}
+.scope-item {
+  color: var(--on-coal);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+.scope-note {
+  color: var(--on-coal-mute);
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 92;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 720px) {
+  .scope-grid { grid-template-columns: 1fr; }
+  .scope-list li {
+    grid-template-columns: 1.5rem 1fr;
+    gap: 0.25rem 0.75rem;
+  }
+  .scope-note { grid-column: 2; font-size: 0.85rem; }
+}
+
+/* ---------- Safety (second brand band) ----------
+   Compact three-row refusal contract. Each refusal is one tight row:
+   numeral, claim title, one-line summary with inline chips, and a closing
+   chip. Detail offloaded to docs.html. */
+.safety {
+  background: var(--brand);
+  color: var(--on-brand);
+  padding: clamp(3rem, 5vw, 4.5rem) 0;
+}
+.safety-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 3rem);
+  align-items: baseline;
+  margin-bottom: clamp(2rem, 3.5vw, 2.75rem);
+}
+.safety-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-display-m);
+  letter-spacing: -0.028em;
+  color: var(--on-brand);
+  margin: 0;
+  text-wrap: balance;
+  max-width: 20ch;
+}
+.safety-lede {
+  color: color-mix(in oklab, var(--on-brand) 80%, transparent);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 44ch;
+}
+.safety-rows {
+  display: grid;
+  grid-template-columns: 1fr;
+  border-top: 1px solid color-mix(in oklab, var(--on-brand) 20%, transparent);
+}
+.safety-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.5rem) minmax(0, 1.5fr) minmax(0, 2.25fr) minmax(0, auto);
+  gap: clamp(1rem, 2vw, 1.75rem);
+  align-items: baseline;
+  padding: 1.125rem 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--on-brand) 16%, transparent);
+}
+.safety-row-num {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: color-mix(in oklab, var(--on-brand) 60%, transparent);
+  letter-spacing: 0.04em;
+}
+.safety-row-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  letter-spacing: -0.02em;
+  color: var(--on-brand);
+  margin: 0;
+}
+.safety-row-summary {
+  color: color-mix(in oklab, var(--on-brand) 78%, transparent);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin: 0;
+}
+.safety-row-summary strong {
+  color: var(--on-brand);
+  font-weight: 600;
+}
+.safety-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--on-brand);
+  background: color-mix(in oklab, var(--void) 55%, var(--brand-deep));
+  border: 1px solid color-mix(in oklab, var(--void) 45%, var(--brand-deep));
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.safety-chip-warn {
+  color: var(--brand-bright);
+  border-color: color-mix(in oklab, var(--brand-bright) 50%, var(--brand-deep));
+}
+.safety-foot {
+  margin-top: clamp(1.5rem, 2.5vw, 2rem);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: color-mix(in oklab, var(--on-brand) 68%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.875rem;
+  align-items: center;
+}
+.safety-foot a {
+  color: var(--on-brand);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in oklab, var(--on-brand) 50%, transparent);
+  padding-bottom: 1px;
+  transition: color var(--t-fast) var(--ease-quart), border-color var(--t-fast) var(--ease-quart);
+}
+.safety-foot a:hover {
+  color: var(--brand-bright);
+  border-bottom-color: var(--brand-bright);
+}
+@media (max-width: 880px) {
+  .safety-head { grid-template-columns: 1fr; }
+  .safety-row {
+    grid-template-columns: minmax(0, 2rem) minmax(0, 1fr);
+    row-gap: 0.375rem;
+  }
+  .safety-row-summary { grid-column: 2; }
+  .safety-chip { grid-column: 2; justify-self: start; }
+}
+
+/* ---------- Install (void — the darker terminal-room register) ----------
+   Tabbed code panel: docker-compose / start / no docker share one block.
+   JS toggles `data-install-active` on the section to swap the visible pane. */
+.install {
+  background: var(--void);
+  color: var(--on-coal);
+  padding: clamp(3rem, 5vw, 4.5rem) 0;
+}
+.install-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: baseline;
+  margin-bottom: clamp(1.5rem, 2.5vw, 2.25rem);
+}
+.install-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-display-m);
+  letter-spacing: -0.028em;
+  color: var(--on-coal);
+  margin: 0;
+  text-wrap: balance;
+  max-width: 18ch;
+}
+.install-lede {
+  color: var(--on-coal-mute);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 50ch;
+}
+.install-panel {
+  background: var(--coal-2);
+  border: 1px solid var(--coal-rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.install-tabs {
+  display: flex;
+  background: var(--coal-3);
+  border-bottom: 1px solid var(--coal-rule);
+  padding: 0 0.25rem;
+  overflow-x: auto;
+}
+.install-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--on-coal-mute);
+  padding: 0.625rem 0.875rem;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-quart), border-color var(--t-fast) var(--ease-quart);
+  white-space: nowrap;
+}
+.install-tab:hover { color: var(--on-coal); }
+.install-tab[aria-selected="true"] {
+  color: var(--on-coal);
+  border-bottom-color: var(--brand-bright);
+}
+.install-tab:focus-visible {
+  outline: 2px solid var(--brand-bright);
+  outline-offset: -2px;
+}
+.install-tab-spacer { flex: 1; }
+.install-copy {
+  background: var(--coal-3);
+  border: 1px solid var(--coal-rule);
+  color: var(--on-coal-mute);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  align-self: center;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-quart), border-color var(--t-fast) var(--ease-quart);
+}
+.install-copy:hover { color: var(--on-coal); border-color: var(--on-coal-mute); }
+.install-copy.copy-btn-ok { color: var(--brand-bright); border-color: var(--brand-bright); }
+.install-pane[hidden] { display: none; }
+.install-pane pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-mono);
+  line-height: 1.55;
+  color: var(--on-coal);
+  overflow-x: auto;
+  white-space: pre;
+}
+.install-pane pre .c-kw { color: var(--c-kw-d); font-weight: 600; }
+.install-pane pre .c-str { color: var(--c-str-d); }
+.install-pane pre .c-com { color: var(--c-com-d); font-style: italic; }
+.install-foot {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.875rem 1.25rem;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--on-coal-mute);
+}
+.install-foot-key { color: var(--on-coal); }
+.install-foot a {
+  color: var(--on-coal);
+  text-decoration: none;
+  border-bottom: 1px solid var(--brand);
+  padding-bottom: 1px;
+  transition: color var(--t-fast) var(--ease-quart), border-color var(--t-fast) var(--ease-quart);
+}
+.install-foot a:hover { color: var(--brand-bright); border-bottom-color: var(--brand-bright); }
+@media (max-width: 880px) {
+  .install-head { grid-template-columns: 1fr; }
+}
+
+/* ---------- Code block (with chrome) — one treatment, coal-tinted. ---------- */
+.codeblock {
+  margin: 0;
+  background: var(--coal-2);
+  border: 1px solid var(--coal-rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.codeblock-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.625rem 0.5rem 0.875rem;
+  background: var(--void);
+  border-bottom: 1px solid var(--coal-rule);
+  font-size: 0.75rem;
+  color: var(--on-coal-mute);
+  letter-spacing: 0.02em;
+}
+.codeblock pre {
+  margin: 0;
+  padding: 1.125rem 1.25rem;
+  font-size: var(--t-mono);
+  line-height: 1.65;
+  color: var(--on-coal);
+  overflow-x: auto;
+  white-space: pre;
+  font-variation-settings: normal;
+}
+.codeblock .c-kw  { color: var(--c-kw-d); font-weight: 600; }
+.codeblock .c-ty  { color: var(--c-ty-d); }
+.codeblock .c-fn  { color: var(--c-fn-d); }
+.codeblock .c-str { color: var(--c-str-d); }
+.codeblock .c-num { color: var(--c-num-d); }
+.codeblock .c-com { color: var(--c-com-d); font-style: italic; }
+.codeblock-tight pre { padding: 1rem 1.25rem; font-size: 0.825rem; }
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--on-coal-mute);
+  border: 1px solid var(--coal-rule);
+  background: var(--coal-3);
+  transition:
+    background-color var(--t-fast) var(--ease-quart),
+    color var(--t-fast) var(--ease-quart),
+    border-color var(--t-fast) var(--ease-quart);
+}
+.copy-btn:hover {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--brand);
+}
+.copy-btn-ok { background: var(--brand) !important; color: var(--on-brand) !important; border-color: var(--brand) !important; }
+
+/* ---------- Verify (third brand band — book-ends the page with the hero) ---------- */
+.verify {
+  background: var(--brand);
+  color: var(--on-brand);
+  padding: var(--section-y) 0;
+}
+.verify-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: center;
+}
+.verify-copy h2 { color: var(--on-brand); margin-bottom: 1rem; }
+.verify-copy p { color: var(--on-brand-mute); font-size: var(--t-lede); line-height: 1.55; max-width: 58ch; }
+.verify-copy p strong { color: var(--on-brand); }
+.verify-copy a {
+  color: var(--on-brand);
+  border-bottom: 1px solid color-mix(in oklab, var(--on-brand) 55%, transparent);
+  padding-bottom: 1px;
+  transition: border-color var(--t-fast) var(--ease-quart);
+}
+.verify-copy a:hover { border-bottom-color: var(--on-brand); }
+@media (max-width: 880px) {
+  .verify-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  background: var(--void);
+  color: var(--on-coal-mute);
+  padding-top: clamp(3rem, 5vw, 4rem);
+  padding-bottom: 1.5rem;
+  font-size: 0.9375rem;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.8fr repeat(3, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  padding-bottom: clamp(2rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--coal-rule);
+}
+.mark-footer { color: var(--on-coal); }
+.mark-footer .mark-name { font-size: 1.0625rem; }
+.footer-blurb {
+  margin-top: 1rem;
+  color: var(--on-coal-mute);
+  max-width: 36ch;
+  line-height: 1.55;
+  font-size: 0.9375rem;
+}
+.footer-col { display: flex; flex-direction: column; gap: 0.5rem; }
+.footer-h {
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: var(--on-coal-mute);
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+}
+.footer-col a {
+  color: var(--on-coal);
+  transition: color var(--t-fast) var(--ease-quart);
+}
+.footer-col a:hover { color: var(--brand-bright); }
+.footer-static { color: var(--on-coal-mute); }
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  font-size: 0.75rem;
+  color: var(--on-coal-mute);
+  letter-spacing: 0.02em;
+}
+.footer-print {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--on-coal-mute);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  transition: color var(--t-fast) var(--ease-quart);
+}
+.footer-print:hover { color: var(--brand-bright); }
+
+@media (max-width: 720px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .footer-grid > :first-child { grid-column: 1 / -1; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; gap: 0.375rem; }
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translate(-50%, 1rem);
+  z-index: var(--z-toast);
+  padding: 0.625rem 1rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  border-radius: 3px;
+  border: 1px solid var(--paper);
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.45);
+  opacity: 0;
+  transition:
+    transform var(--t-med) var(--ease-quart),
+    opacity var(--t-med) var(--ease-quart);
+}
+.toast-show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .btn-primary:hover,
+  .btn-ghost:hover { transform: none; }
+  /* Scroll-pin reveal: skip the pin choreography and show end state
+     (current behaviour — copy + overlay always visible). */
+  .feature-shot-live {
+    height: auto;
+    min-height: clamp(28rem, 50vw, 38rem);
+  }
+  .feature-shot-live-pin {
+    position: relative;
+    height: auto;
+    min-height: clamp(28rem, 50vw, 38rem);
+  }
+  .feature-shot-live-pin > .feature-copy-wrap { transform: none; }
+  .feature-shot-live-pin > .feature-overlay { opacity: 1; }
+  .toast { transition: opacity var(--t-fast) linear; }
+}
+
+/* ---------- Print: literal field-manual reference card ----------
+   The brand says "field manual." When the reader hits Cmd-P, give them one.
+   Black-and-white, mono-leaning, focused on the compose snippet, the safety
+   mechanisms, and the verify command. Skip the interactive scaffolding and
+   the hero — they read as web chrome on paper. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    background: white;
+    color: black;
+    font-family: var(--font-display);
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+  .masthead,
+  .hero-table,
+  .hero-overlay,
+  .features,
+  .footer-grid,
+  .footer-bottom,
+  .copy-btn,
+  .toast,
+  .skip-link,
+  .cta-row,
+  svg {
+    display: none !important;
+  }
+  /* Hero prints as flat white with only the h1 + lede. The interactive
+     demo table is not the field-card's job; the compose snippet and the
+     safety mechanisms below are. */
+  .hero {
+    background: white !important;
+    color: black !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+  .hero,
+  .what,
+  .scope,
+  .safety,
+  .install,
+  .verify {
+    background: white !important;
+    color: black !important;
+    padding: 0.75rem 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .hero-grid,
+  .what-grid,
+  .scope-grid,
+  .verify-grid,
+  .install-head,
+  .install-panel,
+  .install-tabs,
+  .install-pane,
+  .safety-head,
+  .safety-rows,
+  .safety-row {
+    display: block !important;
+  }
+  .install-tab[hidden],
+  .install-pane[hidden] {
+    display: block !important;
+  }
+  .install-tab { display: none !important; }
+  .install-tab-spacer, .install-copy { display: none !important; }
+  .hero-copy h1,
+  .display-xl,
+  .display-l,
+  .display-m,
+  .display-s,
+  .what-lede h2,
+  .scope-head h2,
+  .safety-title,
+  .safety-row-title,
+  .install-title,
+  .verify-copy h2,
+  .scope-item,
+  .fact-v {
+    color: black !important;
+  }
+  .hero-stack {
+    display: inline !important;
+  }
+  .hero-stack-l1,
+  .hero-stack-l2,
+  .hero-stack-l3 {
+    display: inline !important;
+    font-size: 18pt !important;
+    font-weight: 600 !important;
+  }
+  .hero-stack-l2 {
+    font-family: var(--font-mono);
+    border: 1px solid black;
+    padding: 0 0.2em;
+    background: transparent !important;
+  }
+  .lede,
+  .scope-lede,
+  .safety-lede,
+  .install-lede,
+  .verify-copy p,
+  .what-lede p,
+  .feature-copy p,
+  .safety-row-summary,
+  .install-pane pre {
+    color: black !important;
+    font-size: 10pt !important;
+  }
+  .scope-x,
+  .fact-k,
+  .mark-sub {
+    color: black !important;
+  }
+  .inline-code,
+  .safety-chip,
+  .verify-copy .inline-code {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #999 !important;
+    padding: 0 0.2em;
+  }
+  .snippet,
+  .codeblock pre {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #999 !important;
+    font-size: 8.5pt !important;
+    page-break-inside: avoid;
+    display: block !important;
+  }
+  .snippet .c-kw, .codeblock .c-kw,
+  .snippet .c-str, .codeblock .c-str,
+  .snippet .c-num, .codeblock .c-num,
+  .snippet .c-ty, .codeblock .c-ty,
+  .snippet .c-fn, .codeblock .c-fn,
+  .snippet .c-com, .codeblock .c-com {
+    color: black !important;
+    font-style: normal !important;
+  }
+  .snippet .c-com, .codeblock .c-com {
+    font-style: italic !important;
+  }
+  .codeblock {
+    background: white !important;
+    border: 1px solid #999 !important;
+  }
+  .codeblock-bar {
+    background: white !important;
+    color: black !important;
+    border-bottom: 1px solid #999 !important;
+    font-size: 8pt !important;
+  }
+  .what-facts li,
+  .scope-list li {
+    border-bottom: 1px solid #ccc !important;
+  }
+  a {
+    color: black !important;
+    text-decoration: underline;
+  }
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 7.5pt;
+    color: #444;
+  }
+  .scope-note {
+    color: black !important;
+  }
+  /* Print-only callout — the page becomes the manual. */
+  body::before {
+    content: "dbil — field reference card · ghcr.io/unkabas/dbil:latest";
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    color: black;
+    border-bottom: 1px solid black;
+    padding-bottom: 4pt;
+    margin-bottom: 12pt;
+  }
+  body::after {
+    content: "End of card. dbil ships in the open, Apache 2.0, no telemetry.";
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    color: black;
+    border-top: 1px solid black;
+    padding-top: 4pt;
+    margin-top: 12pt;
+  }
+}
+
+/* ============================================================
+   Docs page (landing/docs.html)
+   Shares all tokens with the landing. Adds a sticky left rail of
+   numbered contents, an article column, and prose styling for
+   headings/lists/tables. Field-manual register throughout. */
+.docs-main {
+  padding: clamp(2rem, 4vw, 3rem) 0 var(--section-y);
+  background: var(--coal);
+  color: var(--on-coal);
+  min-height: 70vh;
+}
+.docs-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: clamp(2.5rem, 5vw, 5rem);
+  align-items: start;
+}
+
+/* Sidebar nav — numbered chapter list. Field-manuals use chapter numbers;
+   so does this. The numbers carry information (real ordering), they're not
+   scaffolding eyebrow grammar. */
+.docs-nav {
+  position: sticky;
+  top: calc(3.75rem + 1.25rem);
+  align-self: start;
+  font-size: 0.875rem;
+  padding-right: 1rem;
+  border-right: 1px solid var(--coal-rule-soft);
+}
+.docs-nav-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: var(--on-coal-mute);
+  margin: 0 0 0.875rem 0;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--coal-rule);
+}
+.docs-nav-list {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 1.5rem;
+  font-variation-settings: "wdth" 96;
+}
+.docs-nav-list ol {
+  list-style: decimal;
+  margin-top: 0.5rem;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+}
+.docs-nav-list li {
+  padding: 0.25rem 0;
+  color: var(--on-coal-soft);
+}
+.docs-nav-list li::marker {
+  color: var(--on-coal-soft);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.docs-nav-list a {
+  color: var(--on-coal);
+  transition: color var(--t-fast) var(--ease-quart);
+}
+.docs-nav-list a:hover { color: var(--brand-bright); }
+.docs-nav-list a.is-active {
+  color: var(--brand-bright);
+  font-weight: 600;
+}
+.docs-nav-foot {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--coal-rule-soft);
+  font-size: 0.6875rem;
+  color: var(--on-coal-mute);
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+.docs-nav-foot a {
+  color: var(--on-coal);
+  border-bottom: 1px solid var(--coal-rule);
+  padding-bottom: 1px;
+  transition: border-color var(--t-fast) var(--ease-quart);
+}
+.docs-nav-foot a:hover { border-bottom-color: var(--brand-bright); }
+
+/* Article column. */
+.docs-content {
+  max-width: 70ch;
+  min-width: 0;
+}
+.docs-header {
+  margin-bottom: clamp(2rem, 3vw, 3rem);
+}
+.docs-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--brand-bright);
+  text-transform: lowercase;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--coal-rule);
+  display: inline-block;
+}
+.docs-header h1 {
+  color: var(--on-coal);
+  margin-bottom: 1rem;
+}
+.docs-header .lede {
+  color: var(--on-coal-mute);
+  max-width: 62ch;
+}
+.docs-header .lede strong { color: var(--on-coal); }
+
+/* Sections — generous breathing space between top-level sections, tighter
+   between sub-headings. Establishes reading rhythm at scan distance. */
+.docs-section {
+  margin-top: clamp(3rem, 5vw, 4.5rem);
+  padding-top: clamp(2rem, 3vw, 2.5rem);
+  border-top: 1px solid var(--coal-rule);
+}
+.docs-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.docs-section h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.625rem, 2.4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.024em;
+  font-variation-settings: "wdth" 88;
+  line-height: 1.1;
+  color: var(--on-coal);
+  margin: 0 0 1.25rem 0;
+}
+.docs-section h3 {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--on-coal);
+  margin: 2rem 0 0.75rem 0;
+}
+.docs-section p {
+  color: var(--on-coal-mute);
+  line-height: 1.65;
+  margin: 0 0 1rem 0;
+  max-width: 65ch;
+}
+.docs-section p strong { color: var(--on-coal); font-weight: 600; }
+.docs-section p em { font-style: italic; color: var(--on-coal); }
+.docs-section a {
+  color: var(--on-coal);
+  border-bottom: 1px solid var(--brand-bright);
+  padding-bottom: 1px;
+  transition: color var(--t-fast) var(--ease-quart), border-color var(--t-fast) var(--ease-quart);
+}
+.docs-section a:hover { color: var(--brand-bright); }
+
+/* Lists inside docs. */
+.docs-section ul,
+.docs-section ol {
+  margin: 0.75rem 0 1.25rem 0;
+  padding-left: 1.5rem;
+  list-style: disc;
+  color: var(--on-coal-mute);
+  max-width: 65ch;
+}
+.docs-section ol { list-style: decimal; }
+.docs-section li { padding: 0.25rem 0; line-height: 1.6; }
+.docs-section li strong { color: var(--on-coal); }
+.docs-section li::marker { color: var(--on-coal-soft); }
+.docs-steps { font-family: var(--font-display); }
+.docs-steps li { padding: 0.5rem 0; }
+
+/* Numbered list inside docs needs slightly more weight; use mono numbers
+   via ::marker styling for that field-manual feel without changing markup. */
+.docs-section ol li::marker {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+/* Codeblocks inside docs — slightly tighter top margin. */
+.docs-section .codeblock {
+  margin: 0.75rem 0 1.5rem 0;
+}
+
+/* Aside note: a small bordered side-comment used for "why this choice"
+   reasoning. Field-manual-like, not a SaaS callout. */
+.docs-note {
+  margin: 1.25rem 0;
+  padding: 0.875rem 1rem;
+  background: var(--coal-2);
+  border-left: 2px solid var(--brand);
+  border-radius: 0 3px 3px 0;
+  color: var(--on-coal-mute);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  max-width: 65ch;
+}
+.docs-note-tag {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--brand-bright);
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  margin-right: 0.625rem;
+  padding-right: 0.625rem;
+  border-right: 1px solid var(--coal-rule);
+}
+
+/* Table for the tag matrix. Mono, hairline rows, sober. */
+.docs-table-wrap {
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem 0;
+  border: 1px solid var(--coal-rule);
+  border-radius: 4px;
+}
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+.docs-table th,
+.docs-table td {
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--coal-rule-soft);
+  color: var(--on-coal);
+  vertical-align: top;
+}
+.docs-table tbody tr:last-child td { border-bottom: 0; }
+.docs-table th {
+  background: var(--void);
+  font-weight: 500;
+  color: var(--on-coal-mute);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  font-size: 0.6875rem;
+  border-bottom: 1px solid var(--coal-rule);
+}
+.docs-table tbody tr:hover { background: var(--coal-2); }
+.docs-table .docs-refused {
+  color: var(--brand-bright);
+  font-weight: 600;
+}
+
+.docs-footer {
+  margin-top: clamp(3rem, 5vw, 4.5rem);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--coal-rule);
+  font-size: 0.8125rem;
+  color: var(--on-coal-soft);
+  letter-spacing: 0.02em;
+}
+.docs-footer a {
+  color: var(--on-coal);
+  border-bottom: 1px solid var(--coal-rule);
+  padding-bottom: 1px;
+}
+.docs-footer a:hover { border-bottom-color: var(--brand-bright); }
+
+/* Mobile: nav collapses on top of content. */
+@media (max-width: 880px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .docs-nav {
+    position: static;
+    padding-right: 0;
+    border-right: 0;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--coal-rule-soft);
+  }
+}

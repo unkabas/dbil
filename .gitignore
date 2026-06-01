@@ -37,3 +37,6 @@ PRODUCT.md
 DESIGN.md
 .impeccable/
 .understand-anything/
+
+# Local-only landing debug page
+landing/_debug.html
