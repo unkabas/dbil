@@ -30,3 +30,10 @@ Thumbs.db
 
 # Local-only design notes / implementation plans — not for git
 /docs/superpowers/
+
+# Local-only docs and tool artifacts
+CLAUDE.md
+PRODUCT.md
+DESIGN.md
+.impeccable/
+.understand-anything/
