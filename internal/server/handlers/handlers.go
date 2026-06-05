@@ -24,6 +24,7 @@ import (
 type Deps struct {
 	Auth       auth.Deps
 	Conns      *store.ConnectionsRepo
+	SSHHosts   *store.SSHHostsRepo
 	Manager    *postgres.Manager
 	Observ     *store.ObservabilityRepo
 	ObservMgr  *observ.Manager
@@ -51,11 +52,20 @@ func Mount(d Deps) chi.Router {
 		p.Use(auth.RequireAuth(d.Auth))
 		p.Post("/api/auth/logout", LogoutHandler(d.Auth))
 		p.Get("/api/me", MeHandler())
+		p.Post("/api/me/password", ChangeOwnPassword(d))
+
+		// User management — admin only (RequireRole composes over RequireAuth).
+		p.Group(func(a chi.Router) {
+			a.Use(auth.RequireRole(store.RoleAdmin))
+			a.Get("/api/users", ListUsers(d))
+			a.Post("/api/users", CreateUser(d))
+			a.Patch("/api/users/{id}", UpdateUserRole(d))
+			a.Delete("/api/users/{id}", DeleteUser(d))
+			a.Post("/api/users/{id}/reset-password", ResetUserPassword(d))
+		})
 
 		p.Get("/api/connections", ListConnections(d))
-		p.Post("/api/connections", CreateConnection(d))
 		p.Get("/api/connections/{id}", GetConnection(d))
-		p.Delete("/api/connections/{id}", DeleteConnection(d))
 		p.Post("/api/connections/{id}/test", TestConnection(d))
 		p.Post("/api/connections/{id}/query", QueryHandler(d))
 
@@ -70,6 +80,20 @@ func Mount(d Deps) chi.Router {
 		p.Post("/api/connections/{id}/table/{schema}/{name}/rows/search", SearchRowsHandler(d))
 		p.Post("/api/connections/{id}/table/{schema}/{name}/columns/{column}/values", DistinctValuesHandler(d))
 		p.Post("/api/connections/{id}/table/{schema}/{name}/export", ExportTableHandler(d))
+
+		// Inline data editing + SSH-host management — writers only (admin,
+		// member). viewer is read-only and never reaches these handlers.
+		p.Group(func(wr chi.Router) {
+			wr.Use(auth.RequireRole(store.RoleAdmin, store.RoleMember))
+			wr.Post("/api/connections", CreateConnection(d))
+			wr.Delete("/api/connections/{id}", DeleteConnection(d))
+			wr.Post("/api/connections/{id}/table/{schema}/{name}/mutations", MutateTableHandler(d))
+
+			wr.Get("/api/ssh-hosts", ListSSHHosts(d))
+			wr.Post("/api/ssh-hosts", CreateSSHHost(d))
+			wr.Delete("/api/ssh-hosts/{id}", DeleteSSHHost(d))
+			wr.Post("/api/ssh-hosts/{id}/test", TestSSHHost(d))
+		})
 
 		p.Get("/api/discover", ListDiscoverHandler(d))
 		p.Post("/api/discover/{id}/approve", ApproveDiscoverHandler(d))

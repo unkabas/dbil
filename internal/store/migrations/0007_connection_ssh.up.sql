@@ -1,0 +1,2 @@
+ALTER TABLE connections
+  ADD COLUMN ssh_host_id INTEGER REFERENCES ssh_hosts(id) ON DELETE RESTRICT;

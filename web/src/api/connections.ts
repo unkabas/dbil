@@ -12,6 +12,7 @@ export interface Connection {
   tag: Tag
   tls_mode: TLSMode
   requires_passphrase: boolean
+  ssh_host_id?: number | null
   created_at: number
   updated_at: number
 }
@@ -26,6 +27,7 @@ export interface CreateConnectionInput {
   password: string
   database: string
   passphrase?: string
+  ssh_host_id?: number | null
 }
 
 export interface ProbeResponse {

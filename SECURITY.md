@@ -78,3 +78,18 @@ state file on disk is not. The goals are:
 - Rotate the admin password and all auto-generated MKs on first run.
 - Set per-connection passphrases for every `production`-tagged
   connection.
+
+## Access control & SSH secrets
+
+- **Roles.** `admin` manages users and everything else; `member` can read and
+  write data and manage connections; `viewer` is strictly read-only. Write
+  paths (the SQL editor's DML, inline data edits, connection/SSH-host
+  management) are gated server-side by `auth.RequireRole` / the read-only check
+  in `Manager.Execute` — not just in the UI.
+- **User passwords** are Argon2id-hashed with a per-user salt; admin-created and
+  reset passwords are random (120-bit) and force a rotation at first login.
+- **SSH tunnel secrets** (private keys, passwords, key passphrases) are stored
+  under the same MK→DEK→AEAD envelope as connection credentials. For
+  `production` use, wrap the secret with an at-rest passphrase so the tunnel
+  cannot be opened without it. Bastion host keys are pinned on first connect and
+  verified thereafter (no blind trust).

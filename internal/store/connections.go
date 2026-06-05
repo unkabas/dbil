@@ -50,6 +50,7 @@ type Connection struct {
 	Tag                string
 	TLSMode            string
 	RequiresPassphrase bool
+	SSHHostID          *int64 // nil = direct connection; set = tunnel through this SSH host
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -74,6 +75,24 @@ type CreateConnectionParams struct {
 	Password   string
 	Database   string
 	Passphrase string // when non-empty, the password column is passphrase-wrapped
+	SSHHostID  *int64 // optional: tunnel this connection through an ssh_hosts row
+}
+
+// nullableID converts a sql.NullInt64 to *int64.
+func nullableID(n sql.NullInt64) *int64 {
+	if !n.Valid {
+		return nil
+	}
+	v := n.Int64
+	return &v
+}
+
+// idValue converts a *int64 to an any suitable for a nullable SQL parameter.
+func idValue(id *int64) any {
+	if id == nil {
+		return nil
+	}
+	return *id
 }
 
 // ConnectionsRepo wraps the connections table with envelope-encrypted access.
@@ -155,13 +174,15 @@ func (r *ConnectionsRepo) Create(ctx context.Context, params CreateConnectionPar
 			 username_nonce, username_ct,
 			 password_nonce, password_ct,
 			 database_nonce, database_ct,
+			 ssh_host_id,
 			 created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		params.Alias, params.Host, params.Port, params.Tag, params.TLSMode, requiresPassphrase, salt,
 		wrapped.Nonce, wrapped.Ciphertext,
 		userEF.Nonce, userEF.Ciphertext,
 		passwordEF.Nonce, passwordEF.Ciphertext,
 		dbEF.Nonce, dbEF.Ciphertext,
+		idValue(params.SSHHostID),
 		now, now,
 	)
 	if err != nil {
@@ -179,6 +200,7 @@ func (r *ConnectionsRepo) Create(ctx context.Context, params CreateConnectionPar
 		Tag:                params.Tag,
 		TLSMode:            params.TLSMode,
 		RequiresPassphrase: requiresPassphrase != 0,
+		SSHHostID:          params.SSHHostID,
 		CreatedAt:          time.Unix(0, now),
 		UpdatedAt:          time.Unix(0, now),
 	}, nil
@@ -187,7 +209,7 @@ func (r *ConnectionsRepo) Create(ctx context.Context, params CreateConnectionPar
 // List returns all connections in id-ascending order, metadata only.
 func (r *ConnectionsRepo) List(ctx context.Context) ([]Connection, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT id, alias, host, port, tag, tls_mode, requires_passphrase, created_at, updated_at
+		SELECT id, alias, host, port, tag, tls_mode, requires_passphrase, ssh_host_id, created_at, updated_at
 		FROM connections ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("connections: list: %w", err)
@@ -198,13 +220,15 @@ func (r *ConnectionsRepo) List(ctx context.Context) ([]Connection, error) {
 		var (
 			c            Connection
 			requiresPass int
+			sshHostID    sql.NullInt64
 			createdNS    int64
 			updatedNS    int64
 		)
-		if err := rows.Scan(&c.ID, &c.Alias, &c.Host, &c.Port, &c.Tag, &c.TLSMode, &requiresPass, &createdNS, &updatedNS); err != nil {
+		if err := rows.Scan(&c.ID, &c.Alias, &c.Host, &c.Port, &c.Tag, &c.TLSMode, &requiresPass, &sshHostID, &createdNS, &updatedNS); err != nil {
 			return nil, fmt.Errorf("connections: list scan: %w", err)
 		}
 		c.RequiresPassphrase = requiresPass != 0
+		c.SSHHostID = nullableID(sshHostID)
 		c.CreatedAt = time.Unix(0, createdNS)
 		c.UpdatedAt = time.Unix(0, updatedNS)
 		out = append(out, c)
@@ -217,13 +241,14 @@ func (r *ConnectionsRepo) Get(ctx context.Context, id int64) (Connection, error)
 	var (
 		c            Connection
 		requiresPass int
+		sshHostID    sql.NullInt64
 		createdNS    int64
 		updatedNS    int64
 	)
 	err := r.DB.QueryRowContext(ctx, `
-		SELECT id, alias, host, port, tag, tls_mode, requires_passphrase, created_at, updated_at
+		SELECT id, alias, host, port, tag, tls_mode, requires_passphrase, ssh_host_id, created_at, updated_at
 		FROM connections WHERE id = ?`, id,
-	).Scan(&c.ID, &c.Alias, &c.Host, &c.Port, &c.Tag, &c.TLSMode, &requiresPass, &createdNS, &updatedNS)
+	).Scan(&c.ID, &c.Alias, &c.Host, &c.Port, &c.Tag, &c.TLSMode, &requiresPass, &sshHostID, &createdNS, &updatedNS)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Connection{}, ErrConnectionNotFound
 	}
@@ -231,6 +256,7 @@ func (r *ConnectionsRepo) Get(ctx context.Context, id int64) (Connection, error)
 		return Connection{}, fmt.Errorf("connections: get: %w", err)
 	}
 	c.RequiresPassphrase = requiresPass != 0
+	c.SSHHostID = nullableID(sshHostID)
 	c.CreatedAt = time.Unix(0, createdNS)
 	c.UpdatedAt = time.Unix(0, updatedNS)
 	return c, nil
@@ -257,6 +283,7 @@ func (r *ConnectionsRepo) Reveal(ctx context.Context, id int64, passphrase strin
 	var (
 		c             Connection
 		requiresPass  int
+		sshHostID     sql.NullInt64
 		createdNS     int64
 		updatedNS     int64
 		salt          []byte
@@ -270,7 +297,7 @@ func (r *ConnectionsRepo) Reveal(ctx context.Context, id int64, passphrase strin
 		databaseCT    []byte
 	)
 	err := r.DB.QueryRowContext(ctx, `
-		SELECT id, alias, host, port, tag, tls_mode, requires_passphrase, salt,
+		SELECT id, alias, host, port, tag, tls_mode, requires_passphrase, ssh_host_id, salt,
 		       dek_nonce, dek_ciphertext,
 		       username_nonce, username_ct,
 		       password_nonce, password_ct,
@@ -278,7 +305,7 @@ func (r *ConnectionsRepo) Reveal(ctx context.Context, id int64, passphrase strin
 		       created_at, updated_at
 		FROM connections WHERE id = ?`, id,
 	).Scan(
-		&c.ID, &c.Alias, &c.Host, &c.Port, &c.Tag, &c.TLSMode, &requiresPass, &salt,
+		&c.ID, &c.Alias, &c.Host, &c.Port, &c.Tag, &c.TLSMode, &requiresPass, &sshHostID, &salt,
 		&dekNonce, &dekCT,
 		&usernameNonce, &usernameCT,
 		&passwordNonce, &passwordCT,
@@ -292,6 +319,7 @@ func (r *ConnectionsRepo) Reveal(ctx context.Context, id int64, passphrase strin
 		return Revealed{}, fmt.Errorf("connections: reveal load: %w", err)
 	}
 	c.RequiresPassphrase = requiresPass != 0
+	c.SSHHostID = nullableID(sshHostID)
 	c.CreatedAt = time.Unix(0, createdNS)
 	c.UpdatedAt = time.Unix(0, updatedNS)
 

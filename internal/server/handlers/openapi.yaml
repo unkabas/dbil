@@ -498,6 +498,187 @@ paths:
       responses:
         '204': { description: Rejected }
 
+  /api/me/password:
+    post:
+      tags: [auth]
+      summary: Change your own password (clears the must-rotate flag)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current, new]
+              properties:
+                current: { type: string }
+                new: { type: string, minLength: 12 }
+      responses:
+        '204': { description: Password changed }
+        '401': { description: Current password incorrect }
+
+  /api/users:
+    get:
+      tags: [users]
+      summary: List users (admin only)
+      responses:
+        '200': { description: User list }
+        '403': { description: Not an admin }
+    post:
+      tags: [users]
+      summary: Create a user with a generated one-time password (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string }
+                role: { type: string, enum: [admin, member, viewer] }
+      responses:
+        '201': { description: Created; body includes the one-time password }
+        '409': { description: Email already exists }
+
+  /api/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    patch:
+      tags: [users]
+      summary: Change a user's role (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [admin, member, viewer] }
+      responses:
+        '200': { description: Updated }
+        '409': { description: Cannot demote the last admin }
+    delete:
+      tags: [users]
+      summary: Delete a user (admin only)
+      responses:
+        '204': { description: Deleted }
+        '409': { description: Cannot delete the last admin or yourself }
+
+  /api/users/{id}/reset-password:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [users]
+      summary: Reset a user's password to a new generated one (admin only)
+      responses:
+        '200': { description: Body includes the one-time password }
+
+  /api/connections/{id}/table/{schema}/{name}/mutations:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: schema
+        in: path
+        required: true
+        schema: { type: string }
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [data]
+      summary: Apply a batch of inline cell edits in one transaction (writers only)
+      description: >
+        Each change is update / delete / insert, scoped to the table's primary
+        key. Honors X-Confirm and X-Connection-Passphrase like the SQL editor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [changes]
+              properties:
+                changes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      op: { type: string, enum: [update, delete, insert] }
+                      pk: { type: object, additionalProperties: true }
+                      set: { type: object, additionalProperties: true }
+                      values: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Applied; body has rows_affected and statements }
+        '403': { description: Blocked by policy or read-only role }
+        '412': { description: Confirmation required }
+        '422': { description: Table has no primary key }
+
+  /api/ssh-hosts:
+    get:
+      tags: [ssh]
+      summary: List SSH hosts (writers only)
+      responses:
+        '200': { description: SSH host list }
+    post:
+      tags: [ssh]
+      summary: Create an SSH host (writers only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alias, host, port, username, auth_method, secret]
+              properties:
+                alias: { type: string }
+                host: { type: string }
+                port: { type: integer }
+                username: { type: string }
+                auth_method: { type: string, enum: [key, password] }
+                secret: { type: string, description: private key PEM or password }
+                key_passphrase: { type: string }
+                passphrase: { type: string, description: wraps the secret at rest }
+      responses:
+        '201': { description: Created }
+        '409': { description: Alias already exists }
+
+  /api/ssh-hosts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      tags: [ssh]
+      summary: Delete an SSH host (writers only)
+      responses:
+        '204': { description: Deleted }
+        '409': { description: Still referenced by a connection }
+
+  /api/ssh-hosts/{id}/test:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [ssh]
+      summary: Open the tunnel to verify reachability and pin the host key (writers only)
+      responses:
+        '200': { description: Reachable; body has host_key_fingerprint }
+        '428': { description: Passphrase required }
+        '502': { description: Tunnel failed }
+
 components:
   securitySchemes:
     bearerAuth:

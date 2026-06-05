@@ -9,6 +9,7 @@ interface NavItem {
   icon: IconName
   hot: string
   disabled?: boolean
+  adminOnly?: boolean
 }
 
 const ITEMS: NavItem[] = [
@@ -19,6 +20,7 @@ const ITEMS: NavItem[] = [
   { to: '/query',       label: 'Query',         icon: 'query',    hot: 'Q' },
   { to: '/audit',       label: 'Audit',         icon: 'audit',    hot: 'A', disabled: true },
   { to: '/connections', label: 'Connections',   icon: 'conn',     hot: 'C' },
+  { to: '/users',       label: 'Users',         icon: 'user',     hot: 'U', adminOnly: true },
 ]
 
 export default function Sidebar() {
@@ -26,6 +28,7 @@ export default function Sidebar() {
   const initials = (user?.email ?? '?').slice(0, 2).toUpperCase()
   const { data: discover } = useDiscovered()
   const pendingCount = discover?.entries.filter((e) => e.status === 'pending').length ?? 0
+  const items = ITEMS.filter((it) => !it.adminOnly || user?.role === 'admin')
 
   return (
     <aside
@@ -105,7 +108,7 @@ export default function Sidebar() {
       </div>
 
       <nav style={{ display: 'flex', flexDirection: 'column' }}>
-        {ITEMS.map((it) => (
+        {items.map((it) => (
           <NavLink
             key={it.to}
             to={it.to}

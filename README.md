@@ -209,6 +209,7 @@ cd web && npm run dev
 
 ## Docs
 
+- [Feature guide](FEATURES.md) — roles & users, inline data editing, SSH tunnels
 - [Contributing](CONTRIBUTING.md)
 - [Security disclosure](SECURITY.md)
 - [Apache 2.0 license](LICENSE)

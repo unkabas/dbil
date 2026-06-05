@@ -26,8 +26,22 @@ const passwordHashLen = 32
 // taken (UNIQUE constraint).
 var ErrUserExists = errors.New("user already exists")
 
-// ErrUserNotFound is returned when an email lookup misses.
+// ErrUserNotFound is returned when an email or id lookup misses.
 var ErrUserNotFound = errors.New("user not found")
+
+// ErrLastAdmin is returned when a delete or role change would remove the last
+// remaining admin, which would lock everyone out of user management.
+var ErrLastAdmin = errors.New("cannot remove the last admin")
+
+// validRole reports whether role is one of the three known roles.
+func validRole(role string) bool {
+	switch role {
+	case RoleAdmin, RoleMember, RoleViewer:
+		return true
+	default:
+		return false
+	}
+}
 
 // UserAuth bundles a user row with its password material. Used only inside
 // auth/store; never serialise this type in API responses.
@@ -64,9 +78,7 @@ func (r *UsersRepo) Create(ctx context.Context, email, password, role string, au
 	if email == "" || password == "" {
 		return User{}, errors.New("users: email and password are required")
 	}
-	switch role {
-	case RoleAdmin, RoleMember, RoleViewer:
-	default:
+	if !validRole(role) {
 		return User{}, fmt.Errorf("users: invalid role %q", role)
 	}
 	salt, err := crypto.NewSalt()
@@ -143,4 +155,153 @@ func (r *UsersRepo) GetUserAuthByEmail(ctx context.Context, email string) (UserA
 	ua.User.CreatedAt = time.Unix(0, createdNS)
 	ua.User.UpdatedAt = time.Unix(0, updatedNS)
 	return ua, nil
+}
+
+// scanUser scans a row selected in the (id, email, role, must_rotate,
+// created_at, updated_at) order shared by List and GetByID.
+func scanUser(s interface {
+	Scan(dest ...any) error
+}) (User, error) {
+	var (
+		u          User
+		mustRotate int
+		createdNS  int64
+		updatedNS  int64
+	)
+	if err := s.Scan(&u.ID, &u.Email, &u.Role, &mustRotate, &createdNS, &updatedNS); err != nil {
+		return User{}, err
+	}
+	u.MustRotate = mustRotate != 0
+	u.CreatedAt = time.Unix(0, createdNS)
+	u.UpdatedAt = time.Unix(0, updatedNS)
+	return u, nil
+}
+
+// List returns all users ordered by creation time (oldest first). No password
+// material is included.
+func (r *UsersRepo) List(ctx context.Context) ([]User, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT id, email, role, must_rotate, created_at, updated_at
+		FROM users ORDER BY created_at ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("users: list: %w", err)
+	}
+	defer rows.Close()
+	var out []User
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, fmt.Errorf("users: list scan: %w", err)
+		}
+		out = append(out, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("users: list rows: %w", err)
+	}
+	return out, nil
+}
+
+// GetByID returns a single user by id. Returns ErrUserNotFound on miss.
+func (r *UsersRepo) GetByID(ctx context.Context, id int64) (User, error) {
+	row := r.DB.QueryRowContext(ctx, `
+		SELECT id, email, role, must_rotate, created_at, updated_at
+		FROM users WHERE id = ?`, id)
+	u, err := scanUser(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, ErrUserNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("users: get by id: %w", err)
+	}
+	return u, nil
+}
+
+// UpdateRole changes a user's role. Demoting the last admin is rejected with
+// ErrLastAdmin so user management can never be locked out.
+func (r *UsersRepo) UpdateRole(ctx context.Context, id int64, role string) (User, error) {
+	if !validRole(role) {
+		return User{}, fmt.Errorf("users: invalid role %q", role)
+	}
+	current, err := r.GetByID(ctx, id)
+	if err != nil {
+		return User{}, err
+	}
+	if current.Role == RoleAdmin && role != RoleAdmin {
+		if err := r.guardNotLastAdmin(ctx, id); err != nil {
+			return User{}, err
+		}
+	}
+	now := time.Now().UnixNano()
+	if _, err := r.DB.ExecContext(ctx, `UPDATE users SET role = ?, updated_at = ? WHERE id = ?`,
+		role, now, id); err != nil {
+		return User{}, fmt.Errorf("users: update role: %w", err)
+	}
+	current.Role = role
+	current.UpdatedAt = time.Unix(0, now)
+	return current, nil
+}
+
+// SetPassword replaces a user's password with a fresh Argon2id hash and salt
+// and sets the must_rotate flag (true for admin resets, false after a user
+// changes their own password).
+func (r *UsersRepo) SetPassword(ctx context.Context, id int64, password string, mustRotate bool) error {
+	if password == "" {
+		return errors.New("users: password is required")
+	}
+	salt, err := crypto.NewSalt()
+	if err != nil {
+		return fmt.Errorf("users: salt: %w", err)
+	}
+	hash, err := crypto.Argon2id([]byte(password), salt, passwordHashLen)
+	if err != nil {
+		return fmt.Errorf("users: hash: %w", err)
+	}
+	encoded := base64.RawURLEncoding.EncodeToString(hash)
+	rotate := 0
+	if mustRotate {
+		rotate = 1
+	}
+	now := time.Now().UnixNano()
+	res, err := r.DB.ExecContext(ctx, `
+		UPDATE users SET password_hash = ?, password_salt = ?, must_rotate = ?, updated_at = ?
+		WHERE id = ?`, encoded, salt, rotate, now, id)
+	if err != nil {
+		return fmt.Errorf("users: set password: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// Delete removes a user. Deleting the last admin is rejected with ErrLastAdmin.
+// Sessions are removed by the ON DELETE CASCADE foreign key.
+func (r *UsersRepo) Delete(ctx context.Context, id int64) error {
+	u, err := r.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if u.Role == RoleAdmin {
+		if err := r.guardNotLastAdmin(ctx, id); err != nil {
+			return err
+		}
+	}
+	if _, err := r.DB.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id); err != nil {
+		return fmt.Errorf("users: delete: %w", err)
+	}
+	return nil
+}
+
+// guardNotLastAdmin returns ErrLastAdmin if id is the only remaining admin.
+func (r *UsersRepo) guardNotLastAdmin(ctx context.Context, id int64) error {
+	var others int
+	if err := r.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM users WHERE role = ? AND id != ?`, RoleAdmin, id,
+	).Scan(&others); err != nil {
+		return fmt.Errorf("users: count other admins: %w", err)
+	}
+	if others == 0 {
+		return ErrLastAdmin
+	}
+	return nil
 }

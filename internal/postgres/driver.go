@@ -5,6 +5,7 @@ package postgres
 
 import (
 	"context"
+	"net"
 	"time"
 )
 
@@ -18,6 +19,10 @@ type Conn struct {
 	Password string
 	Database string
 	TLSMode  string
+	// DialContext, when non-nil, replaces the default network dialer — used to
+	// route the Postgres connection through an SSH tunnel. addr is the DB
+	// address as seen from the tunnel endpoint (i.e. Host:Port above).
+	DialContext func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
 // Probe is the result of querying a freshly opened connection. The capability
@@ -53,6 +58,31 @@ type Pool interface {
 
 type rowLimitPool interface {
 	ExecuteWithLimit(ctx context.Context, sql string, rowCap int) (*Result, error)
+}
+
+type txPool interface {
+	ExecuteTx(ctx context.Context, stmts []string) (int64, error)
+}
+
+// ExecuteTx runs stmts as a single atomic transaction when the concrete pool
+// supports it (the production pgx pool does), rolling back on the first error.
+// Test doubles that do not implement txPool fall back to sequential,
+// non-atomic Execute — acceptable for unit tests, never for real writes.
+func ExecuteTx(ctx context.Context, pool Pool, stmts []string) (int64, error) {
+	if p, ok := pool.(txPool); ok {
+		return p.ExecuteTx(ctx, stmts)
+	}
+	var total int64
+	for _, s := range stmts {
+		res, err := pool.Execute(ctx, s)
+		if err != nil {
+			return total, err
+		}
+		if res != nil {
+			total += res.RowsAffected
+		}
+	}
+	return total, nil
 }
 
 // ExecuteWithLimit runs sql with a caller-supplied row cap when the concrete

@@ -65,7 +65,9 @@ func serveCmd() *cobra.Command {
 				Audit:    auditRepo,
 			}
 			conns := store.NewConnectionsRepo(db, mk)
+			sshHosts := store.NewSSHHostsRepo(db, mk)
 			pgxMgr := postgres.NewManager(postgres.NewPGX(), conns, auditRepo)
+			pgxMgr.SetSSHHosts(sshHosts)
 			observRepo := store.NewObservabilityRepo(db)
 			discoveredRepo := store.NewDiscoveredRepo(db, mk)
 
@@ -98,6 +100,7 @@ func serveCmd() *cobra.Command {
 			handler := handlers.Mount(handlers.Deps{
 				Auth:       authDeps,
 				Conns:      conns,
+				SSHHosts:   sshHosts,
 				Manager:    pgxMgr,
 				Observ:     observRepo,
 				ObservMgr:  observMgr,

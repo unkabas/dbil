@@ -14,6 +14,7 @@ interface AuthState {
   ready: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  refresh: () => Promise<void>
 }
 
 const AuthCtx = createContext<AuthState | null>(null)
@@ -66,6 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me)
   }
 
+  // refresh re-reads the current user (e.g. after a forced password rotation
+  // clears must_rotate).
+  const refresh = async () => {
+    const me = await apiFetch<User>('/api/me')
+    setUser(me)
+  }
+
   const logout = async () => {
     if (token) {
       try {
@@ -79,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ token, user, ready, login, logout }}>{children}</AuthCtx.Provider>
+    <AuthCtx.Provider value={{ token, user, ready, login, logout, refresh }}>{children}</AuthCtx.Provider>
   )
 }
 

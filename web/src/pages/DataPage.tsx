@@ -13,6 +13,9 @@ import {
   type DistinctValue,
 } from '../api/schema'
 import { ApiError } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
+import { useSubmitMutations } from '../api/mutations'
+import { useTableEditor, rowKeyFor, pkFor, type TableEditor } from './dataEditor'
 import Icon from '../components/Icon'
 
 const PAGE_SIZE = 200
@@ -22,6 +25,16 @@ export default function DataPage() {
   const { activeConnID, activeConn } = useShellContext()
   const { schema, name } = useParams<{ schema: string; name: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canWrite = user?.role === 'admin' || user?.role === 'member'
+  const editor = useTableEditor()
+  const submit = useSubmitMutations()
+
+  // Discard pending edits whenever the selected table changes.
+  useEffect(() => {
+    editor.reset()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schema, name])
 
   const schemaQuery = useSchema(activeConnID)
   const allTables = useMemo<SchemaTable[]>(() => {
@@ -122,6 +135,53 @@ export default function DataPage() {
 
   const gridTemplate = `40px ${cols.map(() => 'minmax(140px, 1fr)').join(' ')}`
 
+  // Inline editing is available to writers (admin/member) on real tables that
+  // expose a primary key; views and PK-less tables stay read-only.
+  const pkCols = effective.columns.filter((c) => c.pk).map((c) => c.name)
+  const colIndex: Record<string, number> = {}
+  cols.forEach((c, i) => {
+    colIndex[c.name] = i
+  })
+  const editable = canWrite && pkCols.length > 0
+
+  const onSubmit = async () => {
+    if (!activeConnID || !effective) return
+    const changes = editor.buildChanges()
+    if (changes.length === 0) return
+    let confirm = false
+    let passphrase: string | undefined
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await submit.mutateAsync({
+          id: activeConnID,
+          schema: effective.schema,
+          name: effective.name,
+          changes,
+          confirm,
+          passphrase,
+        })
+        setNotice(`Applied ${res.rows_affected} row change${res.rows_affected === 1 ? '' : 's'}.`)
+        editor.reset()
+        await rowsQuery.refetch()
+        return
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 412 && !confirm) {
+          if (!window.confirm(`This write needs confirmation on the ${activeConn?.tag} connection. Proceed?`)) return
+          confirm = true
+          continue
+        }
+        if (err instanceof ApiError && err.status === 428 && !passphrase) {
+          const p = window.prompt('Connection passphrase required:')
+          if (!p) return
+          passphrase = p
+          continue
+        }
+        setNotice('Write failed: ' + errMsg(err))
+        return
+      }
+    }
+  }
+
   return (
     <div
       style={{
@@ -129,6 +189,7 @@ export default function DataPage() {
         gridTemplateRows: '44px 48px 1fr 28px',
         height: '100%',
         minHeight: 0,
+        position: 'relative',
       }}
     >
       <div
@@ -263,6 +324,17 @@ export default function DataPage() {
                   : (estimatedExact ? '' : '~') + fmtCount(estimated) + ' total'
               }`}
         </span>
+        {editable && (
+          <button
+            className="btn-gh"
+            title="Add a new row"
+            onClick={() => editor.addDraft()}
+            style={{ gap: 6 }}
+          >
+            <Icon name="plus" size={12} />
+            <span style={{ fontSize: 11 }}>Row</span>
+          </button>
+        )}
         <div style={{ position: 'relative' }}>
           <button
             className="btn-gh"
@@ -304,6 +376,19 @@ export default function DataPage() {
           hasNextPage={rowsQuery.hasNextPage}
           isFetchingNextPage={rowsQuery.isFetchingNextPage}
           fetchNextPage={() => rowsQuery.fetchNextPage()}
+          editable={editable}
+          editor={editor}
+          pkCols={pkCols}
+          colIndex={colIndex}
+        />
+      )}
+
+      {editor.dirtyCount > 0 && (
+        <EditBar
+          count={editor.dirtyCount}
+          submitting={submit.isPending}
+          onRevert={() => editor.reset()}
+          onSubmit={onSubmit}
         />
       )}
 
@@ -358,6 +443,10 @@ function VirtualizedRows({
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
+  editable,
+  editor,
+  pkCols,
+  colIndex,
 }: {
   parentRef: React.MutableRefObject<HTMLDivElement | null>
   rows: CellValue[][]
@@ -373,6 +462,10 @@ function VirtualizedRows({
   hasNextPage: boolean | undefined
   isFetchingNextPage: boolean
   fetchNextPage(): void
+  editable: boolean
+  editor: TableEditor
+  pkCols: string[]
+  colIndex: Record<string, number>
 }) {
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -478,6 +571,46 @@ function VirtualizedRows({
           </div>
         )}
 
+        {/* Draft (insert) rows — rendered above the virtualized list. */}
+        {editable &&
+          editor.drafts.map((d) => (
+            <div
+              key={`draft-${d.id}`}
+              role="row"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: gridTemplate,
+                borderBottom: '1px solid var(--line-1)',
+                background: 'rgba(52,211,153,0.08)',
+                height: ROW_HEIGHT,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+              }}
+            >
+              <button
+                title="Discard new row"
+                onClick={() => editor.removeDraft(d.id)}
+                style={{
+                  ...tdCellBase,
+                  justifyContent: 'center',
+                  color: 'var(--danger)',
+                  background: 'none',
+                  border: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                <Icon name="x" size={12} />
+              </button>
+              {cols.map((c) => (
+                <DraftCell
+                  key={c.name}
+                  value={d.values[c.name]}
+                  onCommit={(v) => editor.setDraftCell(d.id, c.name, v)}
+                />
+              ))}
+            </div>
+          ))}
+
         {/* Virtualized list */}
         <div
           style={{
@@ -489,6 +622,8 @@ function VirtualizedRows({
         >
           {items.map((vi) => {
             const row = rows[vi.index]
+            const rowKey = editable ? rowKeyFor(row, colIndex, pkCols) : ''
+            const deleted = editable && editor.isDeleted(rowKey)
             return (
               <div
                 key={vi.key}
@@ -504,21 +639,190 @@ function VirtualizedRows({
                   gridTemplateColumns: gridTemplate,
                   borderBottom: '1px solid var(--line-1)',
                   color: 'var(--fg-2)',
+                  background: deleted ? 'rgba(255,107,122,0.08)' : undefined,
+                  textDecoration: deleted ? 'line-through' : undefined,
                 }}
               >
-                <div style={{ ...tdCellBase, textAlign: 'right', color: 'var(--fg-4)' }} className="tnum">
-                  {vi.index + 1}
-                </div>
-                {row.map((cell, ci) => (
-                  <div key={ci} style={tdCellBase} title={String(cell ?? '')}>
-                    {renderCell(cell)}
+                {editable ? (
+                  <button
+                    title={deleted ? 'Undo delete' : 'Delete row'}
+                    onClick={() => editor.toggleDelete(rowKey, pkFor(row, colIndex, pkCols))}
+                    className="row-gutter-del"
+                    style={{
+                      ...tdCellBase,
+                      justifyContent: 'center',
+                      color: deleted ? 'var(--danger)' : 'var(--fg-5)',
+                      background: 'none',
+                      border: 0,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Icon name={deleted ? 'refresh' : 'trash'} size={11} />
+                  </button>
+                ) : (
+                  <div style={{ ...tdCellBase, textAlign: 'right', color: 'var(--fg-4)' }} className="tnum">
+                    {vi.index + 1}
                   </div>
-                ))}
+                )}
+                {row.map((cell, ci) => {
+                  const colName = cols[ci]?.name ?? ''
+                  const ov = editable ? editor.cellOverride(rowKey, colName) : { has: false, value: null }
+                  const value = ov.has ? ov.value : cell
+                  return (
+                    <EditableCell
+                      key={ci}
+                      value={value}
+                      dirty={ov.has}
+                      editable={editable && !deleted}
+                      onCommit={(v) => editor.editCell(rowKey, pkFor(row, colIndex, pkCols), colName, v)}
+                    />
+                  )
+                })}
               </div>
             )
           })}
         </div>
       </div>
+    </div>
+  )
+}
+
+// EditableCell renders a loaded cell. Double-click enters edit mode; Enter or
+// blur commits, Esc cancels, Ctrl/Cmd+Backspace commits SQL NULL. Pending edits
+// are tinted with the accent colour.
+function EditableCell({
+  value,
+  dirty,
+  editable,
+  onCommit,
+}: {
+  value: CellValue
+  dirty: boolean
+  editable: boolean
+  onCommit(v: CellValue): void
+}) {
+  const [editing, setEditing] = useState(false)
+  if (editing) {
+    return (
+      <div style={{ ...tdCellBase, padding: 0 }}>
+        <input
+          autoFocus
+          defaultValue={value == null ? '' : String(value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              onCommit(e.currentTarget.value)
+              setEditing(false)
+            } else if (e.key === 'Escape') {
+              setEditing(false)
+            } else if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') {
+              onCommit(null)
+              setEditing(false)
+            }
+          }}
+          onBlur={(e) => {
+            onCommit(e.currentTarget.value)
+            setEditing(false)
+          }}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: '1px solid var(--accent)',
+            background: 'var(--bg-2)',
+            color: 'var(--fg-1)',
+            font: 'inherit',
+            padding: '0 11px',
+            outline: 'none',
+          }}
+        />
+      </div>
+    )
+  }
+  return (
+    <div
+      style={{
+        ...tdCellBase,
+        cursor: editable ? 'text' : 'default',
+        background: dirty ? 'var(--accent-mute)' : undefined,
+        boxShadow: dirty ? 'inset 2px 0 0 var(--accent)' : undefined,
+      }}
+      title={String(value ?? '')}
+      onDoubleClick={() => {
+        if (editable) setEditing(true)
+      }}
+    >
+      {renderCell(value)}
+    </div>
+  )
+}
+
+// DraftCell is a single-click editable cell for a new (insert) row. Empty means
+// the column is omitted (so column defaults apply); Ctrl/Cmd+Backspace sets NULL.
+function DraftCell({ value, onCommit }: { value: CellValue; onCommit(v: CellValue): void }) {
+  return (
+    <div style={{ ...tdCellBase, padding: 0 }}>
+      <input
+        defaultValue={value == null ? '' : String(value)}
+        placeholder="—"
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') {
+            onCommit(null)
+          }
+        }}
+        onBlur={(e) => onCommit(e.currentTarget.value)}
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 0,
+          background: 'transparent',
+          color: 'var(--fg-1)',
+          font: 'inherit',
+          padding: '0 11px',
+          outline: 'none',
+        }}
+      />
+    </div>
+  )
+}
+
+// EditBar floats over the grid while there are uncommitted changes.
+function EditBar({
+  count,
+  submitting,
+  onRevert,
+  onSubmit,
+}: {
+  count: number
+  submitting: boolean
+  onRevert(): void
+  onSubmit(): void
+}) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 40,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '8px 12px',
+        background: 'var(--bg-3)',
+        border: '1px solid var(--line-3)',
+        borderRadius: 10,
+        boxShadow: 'var(--shadow-pop)',
+        zIndex: 5,
+      }}
+    >
+      <span className="mono" style={{ fontSize: 12, color: 'var(--fg-1)' }}>
+        {count} pending change{count === 1 ? '' : 's'}
+      </span>
+      <button className="btn-gh" onClick={onRevert} disabled={submitting}>
+        Revert
+      </button>
+      <button className="btn-pri" onClick={onSubmit} disabled={submitting}>
+        {submitting ? 'Submitting…' : 'Submit'}
+      </button>
     </div>
   )
 }

@@ -218,6 +218,58 @@ func TestManager_Execute_AuditEmitted(t *testing.T) {
 	}
 }
 
+func TestManager_ExecuteBatch_LocalOK(t *testing.T) {
+	mgr, _, _, id := setupManager(t, store.TagLocal)
+	res, err := mgr.ExecuteBatch(context.Background(), BatchParams{
+		ConnID:    id,
+		UserEmail: "u@x",
+		Stmts: []string{
+			`UPDATE "public"."t" SET "name" = 'x' WHERE "id" = '1'`,
+			`DELETE FROM "public"."t" WHERE "id" = '2'`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Statements != 2 {
+		t.Fatalf("want 2 statements, got %d", res.Statements)
+	}
+	if err := mgr.audit.VerifyChain(context.Background()); err != nil {
+		t.Fatalf("audit chain broken: %v", err)
+	}
+}
+
+func TestManager_ExecuteBatch_ReadOnlyBlocked(t *testing.T) {
+	mgr, _, _, id := setupManager(t, store.TagLocal)
+	_, err := mgr.ExecuteBatch(context.Background(), BatchParams{
+		ConnID:    id,
+		UserEmail: "viewer@x",
+		ReadOnly:  true,
+		Stmts:     []string{`UPDATE "public"."t" SET "name" = 'x' WHERE "id" = '1'`},
+	})
+	var be *BlockedError
+	if !errors.As(err, &be) {
+		t.Fatalf("want BlockedError for read-only batch, got %v", err)
+	}
+}
+
+func TestManager_ExecuteBatch_StagingNeedsConfirm(t *testing.T) {
+	mgr, _, _, id := setupManager(t, store.TagStaging)
+	stmts := []string{`UPDATE "public"."t" SET "name" = 'x' WHERE "id" = '1'`}
+	_, err := mgr.ExecuteBatch(context.Background(), BatchParams{
+		ConnID: id, UserEmail: "u@x", Stmts: stmts,
+	})
+	var ce *ConfirmationRequiredError
+	if !errors.As(err, &ce) {
+		t.Fatalf("want ConfirmationRequiredError on staging, got %v", err)
+	}
+	if _, err := mgr.ExecuteBatch(context.Background(), BatchParams{
+		ConnID: id, UserEmail: "u@x", Stmts: stmts, Confirm: true,
+	}); err != nil {
+		t.Fatalf("with confirm staging batch should run: %v", err)
+	}
+}
+
 func TestManager_OpenError(t *testing.T) {
 	mgr, drv, _, id := setupManager(t, store.TagLocal)
 	drv.openErr = errors.New("nope")
