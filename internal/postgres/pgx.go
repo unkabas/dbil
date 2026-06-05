@@ -90,6 +90,30 @@ func (p *pgxPool) ExecuteWithLimit(ctx context.Context, sql string, rowCap int) 
 	}, nil
 }
 
+// ExecuteTx runs every statement in stmts inside one transaction, rolling
+// back on the first error and returning the summed RowsAffected on commit.
+// The caller's context carries the statement-timeout deadline set by
+// Manager.ExecuteBatch.
+func (p *pgxPool) ExecuteTx(ctx context.Context, stmts []string) (int64, error) {
+	tx, err := p.p.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("pgx begin: %w", err)
+	}
+	var total int64
+	for _, s := range stmts {
+		tag, err := tx.Exec(ctx, s)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return 0, fmt.Errorf("pgx tx exec: %w", err)
+		}
+		total += tag.RowsAffected()
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("pgx commit: %w", err)
+	}
+	return total, nil
+}
+
 // Open builds a libpq-style DSN, opens a pgxpool.Pool with DBil's default
 // limits (MaxConns=4, MinConns=0, MaxConnIdleTime=5m), and returns it.
 func (d *pgxDriver) Open(ctx context.Context, c Conn) (Pool, error) {
@@ -100,6 +124,10 @@ func (d *pgxDriver) Open(ctx context.Context, c Conn) (Pool, error) {
 	cfg.MaxConns = 4
 	cfg.MinConns = 0
 	cfg.MaxConnIdleTime = 5 * time.Minute
+	if c.DialContext != nil {
+		// Route every backend connection through the SSH tunnel dialer.
+		cfg.ConnConfig.DialFunc = c.DialContext
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

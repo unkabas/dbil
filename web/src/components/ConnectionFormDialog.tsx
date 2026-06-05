@@ -6,6 +6,7 @@ import {
   type Tag,
   type TLSMode,
 } from '../api/connections'
+import { useSSHHosts } from '../api/sshHosts'
 import Icon from './Icon'
 
 interface Props {
@@ -21,6 +22,7 @@ export default function ConnectionFormDialog({ open, onClose, onCreated }: Props
   const [input, setInput] = useState<CreateConnectionInput>(() => initial())
   const [error, setError] = useState<string | null>(null)
   const create = useCreateConnection()
+  const { data: sshHosts = [] } = useSSHHosts()
 
   useEffect(() => {
     if (open) {
@@ -146,6 +148,58 @@ export default function ConnectionFormDialog({ open, onClose, onCreated }: Props
 
           <Field label="TLS mode">
             <Select value={input.tls_mode} onChange={(v) => update('tls_mode', v as TLSMode)} options={TLS_MODES} />
+          </Field>
+
+          <Field
+            label={
+              <>
+                SSH tunnel{' '}
+                <span style={{ color: 'var(--fg-4)', fontWeight: 400 }}>
+                  (host/port are resolved from the bastion)
+                </span>
+              </>
+            }
+          >
+            <div style={{ position: 'relative' }}>
+              <select
+                value={input.ssh_host_id ? String(input.ssh_host_id) : ''}
+                onChange={(e) =>
+                  update('ssh_host_id', e.target.value ? Number(e.target.value) : undefined)
+                }
+                style={{
+                  appearance: 'none',
+                  width: '100%',
+                  height: 32,
+                  padding: '0 28px 0 10px',
+                  borderRadius: 7,
+                  background: 'var(--bg-1)',
+                  border: '1px solid var(--line-2)',
+                  color: 'var(--fg-1)',
+                  fontSize: 12.5,
+                  outline: 0,
+                  fontFamily: 'inherit',
+                }}
+              >
+                <option value="">Direct — no tunnel</option>
+                {sshHosts.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.alias} ({h.username}@{h.host}:{h.port})
+                  </option>
+                ))}
+              </select>
+              <Icon
+                name="chev"
+                size={12}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--fg-4)',
+                  pointerEvents: 'none',
+                }}
+              />
+            </div>
           </Field>
 
           <Field

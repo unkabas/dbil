@@ -10,7 +10,10 @@ import DataPage from './pages/DataPage'
 import ConnectionsPage from './pages/ConnectionsPage'
 import ObservabilityPage from './pages/ObservabilityPage'
 import DiscoverPage from './pages/DiscoverPage'
+import UsersPage from './pages/UsersPage'
+import ChangePasswordModal from './components/ChangePasswordModal'
 import { useConnections } from './api/connections'
+import { useAuth } from './auth/AuthContext'
 import type { ShellContext } from './shell/context'
 
 export default function App() {
@@ -27,6 +30,7 @@ export default function App() {
             <Route path="/observ" element={<ObservabilityPage />} />
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
+            <Route path="/users" element={<UsersPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -37,6 +41,7 @@ export default function App() {
 
 function AppShell() {
   const { data: connections = [] } = useConnections()
+  const { user, refresh } = useAuth()
   const [activeConnID, setActiveConnID] = useState<number>(0)
 
   useEffect(() => {
@@ -67,6 +72,9 @@ function AppShell() {
           <Outlet context={ctx} />
         </div>
       </div>
+      {user?.must_rotate && (
+        <ChangePasswordModal forced onSuccess={() => void refresh()} />
+      )}
     </div>
   )
 }

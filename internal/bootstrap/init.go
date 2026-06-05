@@ -8,12 +8,12 @@ package bootstrap
 
 import (
 	"context"
-	"encoding/base32"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 
+	"github.com/unkabas/dbil/internal/auth"
 	"github.com/unkabas/dbil/internal/config"
 	"github.com/unkabas/dbil/internal/crypto"
 	"github.com/unkabas/dbil/internal/store"
@@ -78,7 +78,7 @@ func RunInit(ctx context.Context, cfg config.DBilConfig) (InitResult, error) {
 		return InitResult{}, fmt.Errorf("bootstrap: check admin: %w", err)
 	}
 	if !hasAdmin {
-		password, err := generatePassword()
+		password, err := auth.GeneratePassword()
 		if err != nil {
 			return InitResult{}, fmt.Errorf("bootstrap: generate password: %w", err)
 		}
@@ -136,17 +136,6 @@ func LoadMasterKey(ctx context.Context, cfg config.DBilConfig) (crypto.MasterKey
 		crypto.NewAutoLoader(filepath.Join(cfg.DataDir, "master.key")),
 	)
 	return chain.Load(ctx)
-}
-
-// generatePassword returns a 24-character base32 string from 15 random bytes
-// (120 bits of entropy).
-func generatePassword() (string, error) {
-	b, err := crypto.Random(15)
-	if err != nil {
-		return "", err
-	}
-	enc := base32.StdEncoding.WithPadding(base32.NoPadding)
-	return enc.EncodeToString(b), nil
 }
 
 // writeInitialCreds writes the first-run credentials file at mode 0600.

@@ -10,13 +10,17 @@ import { ApiError } from '../api/client'
 import TagBadge from '../components/TagBadge'
 import Icon from '../components/Icon'
 import ConnectionFormDialog from '../components/ConnectionFormDialog'
+import SSHHostsSection from '../components/SSHHostsSection'
 import { useShellContext } from '../shell/context'
+import { useAuth } from '../auth/AuthContext'
 
 export default function ConnectionsPage() {
   const navigate = useNavigate()
   const { data: connections = [], isLoading, error } = useConnections()
   const [showCreate, setShowCreate] = useState(false)
   const { setActiveConnID } = useShellContext()
+  const { user } = useAuth()
+  const canWrite = user?.role === 'admin' || user?.role === 'member'
 
   return (
     <div className="app-bg" style={{ height: '100%', overflow: 'auto' }}>
@@ -47,10 +51,12 @@ export default function ConnectionsPage() {
                 : `${connections.length} registered PostgreSQL database${connections.length === 1 ? '' : 's'}`}
             </p>
           </div>
-          <button className="btn-pri" onClick={() => setShowCreate(true)}>
-            <Icon name="plus" size={12} />
-            Add connection
-          </button>
+          {canWrite && (
+            <button className="btn-pri" onClick={() => setShowCreate(true)}>
+              <Icon name="plus" size={12} />
+              Add connection
+            </button>
+          )}
         </header>
 
         {isLoading && <CenterMessage>Loading…</CenterMessage>}
@@ -88,6 +94,8 @@ export default function ConnectionsPage() {
             ))}
           </div>
         )}
+
+        {canWrite && <SSHHostsSection />}
       </div>
 
       <ConnectionFormDialog

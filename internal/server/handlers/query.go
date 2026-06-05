@@ -45,6 +45,7 @@ func QueryHandler(d Deps) http.HandlerFunc {
 			SQL:        req.SQL,
 			Confirm:    confirm,
 			UserEmail:  user.Email,
+			ReadOnly:   !auth.CanWrite(user.Role),
 		})
 		if err != nil {
 			respondExecuteError(w, err)

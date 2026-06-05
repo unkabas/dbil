@@ -24,6 +24,7 @@ type createConnReq struct {
 	Password   string `json:"password"`
 	Database   string `json:"database"`
 	Passphrase string `json:"passphrase,omitempty"`
+	SSHHostID  *int64 `json:"ssh_host_id,omitempty"`
 }
 
 type connView struct {
@@ -34,6 +35,7 @@ type connView struct {
 	Tag                string `json:"tag"`
 	TLSMode            string `json:"tls_mode"`
 	RequiresPassphrase bool   `json:"requires_passphrase"`
+	SSHHostID          *int64 `json:"ssh_host_id,omitempty"`
 	CreatedAt          int64  `json:"created_at"`
 	UpdatedAt          int64  `json:"updated_at"`
 }
@@ -43,6 +45,7 @@ func toView(c store.Connection) connView {
 		ID: c.ID, Alias: c.Alias, Host: c.Host, Port: c.Port,
 		Tag: c.Tag, TLSMode: c.TLSMode,
 		RequiresPassphrase: c.RequiresPassphrase,
+		SSHHostID:          c.SSHHostID,
 		CreatedAt:          c.CreatedAt.Unix(),
 		UpdatedAt:          c.UpdatedAt.Unix(),
 	}
@@ -83,6 +86,7 @@ func CreateConnection(d Deps) http.HandlerFunc {
 			Password:   req.Password,
 			Database:   req.Database,
 			Passphrase: req.Passphrase,
+			SSHHostID:  req.SSHHostID,
 		})
 		if err != nil {
 			if errors.Is(err, store.ErrConnectionExists) {

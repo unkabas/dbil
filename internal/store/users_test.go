@@ -81,3 +81,105 @@ func TestUsers_RejectsInvalidRole(t *testing.T) {
 		t.Fatal("expected error for invalid role")
 	}
 }
+
+func TestUsers_ListAndGetByID(t *testing.T) {
+	r := setupUsers(t)
+	ctx := context.Background()
+	a, err := r.Create(ctx, "admin@local", "admin-password", RoleAdmin, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Create(ctx, "member@local", "member-password", RoleMember, false); err != nil {
+		t.Fatal(err)
+	}
+	users, err := r.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(users) != 2 {
+		t.Fatalf("want 2 users, got %d", len(users))
+	}
+	got, err := r.GetByID(ctx, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Email != "admin@local" {
+		t.Fatalf("GetByID email mismatch: %q", got.Email)
+	}
+	if _, err := r.GetByID(ctx, 99999); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("want ErrUserNotFound, got %v", err)
+	}
+}
+
+func TestUsers_UpdateRole_LastAdminGuard(t *testing.T) {
+	r := setupUsers(t)
+	ctx := context.Background()
+	admin, err := r.Create(ctx, "admin@local", "admin-password", RoleAdmin, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Demoting the only admin must fail.
+	if _, err := r.UpdateRole(ctx, admin.ID, RoleViewer); !errors.Is(err, ErrLastAdmin) {
+		t.Fatalf("want ErrLastAdmin demoting last admin, got %v", err)
+	}
+	// With a second admin present, demotion is allowed.
+	second, err := r.Create(ctx, "admin2@local", "admin2-password", RoleAdmin, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.UpdateRole(ctx, second.ID, RoleMember); err != nil {
+		t.Fatalf("demoting non-last admin should succeed, got %v", err)
+	}
+}
+
+func TestUsers_Delete_LastAdminGuard(t *testing.T) {
+	r := setupUsers(t)
+	ctx := context.Background()
+	admin, err := r.Create(ctx, "admin@local", "admin-password", RoleAdmin, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Delete(ctx, admin.ID); !errors.Is(err, ErrLastAdmin) {
+		t.Fatalf("want ErrLastAdmin deleting last admin, got %v", err)
+	}
+	viewer, err := r.Create(ctx, "viewer@local", "viewer-password", RoleViewer, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Delete(ctx, viewer.ID); err != nil {
+		t.Fatalf("deleting a viewer should succeed, got %v", err)
+	}
+	if _, err := r.GetByID(ctx, viewer.ID); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("deleted user should be gone, got %v", err)
+	}
+}
+
+func TestUsers_SetPassword_ClearsMustRotate(t *testing.T) {
+	r := setupUsers(t)
+	ctx := context.Background()
+	u, err := r.Create(ctx, "u@local", "initial-password", RoleMember, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !u.MustRotate {
+		t.Fatal("auto-generated user should require rotation")
+	}
+	if err := r.SetPassword(ctx, u.ID, "a-brand-new-password", false); err != nil {
+		t.Fatal(err)
+	}
+	ua, err := r.GetUserAuthByEmail(ctx, "u@local")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ua.MustRotate {
+		t.Fatal("self-set password must clear must_rotate")
+	}
+	// Old password must no longer verify against the new hash.
+	got, err := r.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.MustRotate {
+		t.Fatal("GetByID should reflect cleared must_rotate")
+	}
+}
