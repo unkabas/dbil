@@ -5,7 +5,7 @@ on:
     tags: ['v*']
 
 env:
-  GO_VERSION: "1.25.10"
+  GO_VERSION: "1.25.11"
   NODE_VERSION: "22"
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/dbil
 
